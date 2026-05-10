@@ -7,7 +7,12 @@
 ## Overview
 An IsaacLab extension by DLS for performing teleoperation with Unitree Go2 + AgileX Piper
 
-
+Features:
+- Locomotion policy able to adjust pose and carry a manipulator
+- Manipulation controller using whole-body Inverse Kinematics with reduced model using [mink](https://github.com/kevinzakka/mink) + feedback linearization
+- End-effector reference generation via joystick
+- Sim-to-Sim in [Mujoco](https://github.com/google-deepmind/mujoco)
+- Sim-to-Real in ROS2 compatible with our public low-level robot's hal for Go2 [unitree_ros2_dls](https://github.com/iit-DLSLab/unitree_ros2_dls) and Agilex Piper arm [piper-ros2-dls](https://github.com/iit-DLSLab/piper-ros2-dls)
 
 ## Cite this work
 
