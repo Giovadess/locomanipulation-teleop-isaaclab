@@ -78,7 +78,7 @@ class IKMink:
         self.collision_avoidance_limit = mink.CollisionAvoidanceLimit(
             model=self.model,
             geom_pairs=self.collision_pairs,  # type: ignore
-            minimum_distance_from_collisions=0.02,
+            minimum_distance_from_collisions=0.1,
             collision_detection_distance=0.15,
         )
 
