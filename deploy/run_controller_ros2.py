@@ -205,6 +205,7 @@ class TrashControlNode(Node):
         elif(self.old_buttons[0] == 0 and msg.buttons[0] == 1):
             print("Arm only Joystick")
             self.console.isArmJoystickActivated = not self.console.isArmJoystickActivated
+            self.ref_ee_lin_pos = np.array([0.1, 0.0, 0.25])
             self.old_buttons[0] = 1
 
 
@@ -291,10 +292,11 @@ class TrashControlNode(Node):
         ee_quat = np.array([1.0, 0.0, 0.0, 0.0])
 
         if(self.console.isArmActivated):
-            self.desired_pose_command, \
-                self.desired_joint_pos_arm, \
-                ik_succeded = self.ik_mink_solver.compute(self.ref_ee_lin_pos, ee_quat, self.arm_joints_position, 
-                                                        self.desired_pose_command, optimize_height=True, optimize_pitch=True)
+            if(self.console.isArmJoystickActivated):
+                self.desired_pose_command, \
+                    self.desired_joint_pos_arm, \
+                    ik_succeded = self.ik_mink_solver.compute(self.ref_ee_lin_pos, ee_quat, self.arm_joints_position, 
+                                                            self.desired_pose_command, optimize_height=False, optimize_pitch=False)
         else:
             self.desired_joint_pos_arm = joints_pos_arm 
 
