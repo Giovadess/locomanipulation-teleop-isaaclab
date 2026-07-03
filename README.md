@@ -16,7 +16,7 @@ Features:
 - Sim-to-Sim in [Mujoco](https://github.com/google-deepmind/mujoco)
 - Sim-to-Real in ROS2 compatible with our public low-level robot's hal for Go2 [unitree_ros2_dls](https://github.com/iit-DLSLab/unitree_ros2_dls) and Agilex Piper arm [piper-ros2-dls](https://github.com/iit-DLSLab/piper-ros2-dls)
 
-Status: Work in progress - the train is based still on Aliengo, but it works on Go2. Arm IK can be sometimes jittering in some configuration.
+Status: Work in progress for better IK.
 
 ## Cite this work
 
@@ -32,6 +32,11 @@ This work takes a lot of inspiration from our repo [trash-collection-isaaclab](h
   year = {2026}
 }
 ```
+
+
+## How to contribute
+
+PRs are very welcome (search for **TODO** in the issue, or add what you like)!
 
 ## Maintainer
 
