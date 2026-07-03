@@ -59,13 +59,14 @@
             
             <body name="link5" quat="0.707105 -0.707108 0 0">
               <inertial pos="0.0002 -0.06142 -0.00257" quat="0.609413 0.425035 -0.377108 0.552947" mass="0.38" diaginertia="0.000302439 0.000295278 0.000150843"/>
-              <joint name="joint5" pos="0 0 0" axis="0 0 -1" range="-1.22 1.22" damping="0.1" armature="0.01" frictionloss="0.1"/>
+              <joint name="joint5" pos="0 0 0" axis="0 0 1" range="-1.22 1.22" damping="0.1" armature="0.01" frictionloss="0.1"/>
               
               <geom type="mesh" rgba="1 1 1 1" mesh="link5" class="visual"/>
               <geom size="0.03 0.025" pos="0 -0.08 0.0" quat="1 1 0 0" type="capsule" class="collision"/>
               
               <body name="link6" pos="0 -0.091 0" quat="0.707105 0.707108 0 0">
-                <inertial pos="-0.0687204 -0.0345478 -0.0118222" quat="0.466886 0.464856 -0.533085 0.530799" mass="0.0776323" diaginertia="0.00391665 0.00388904 0.000528525"/>
+                <!--inertial pos="-0.0418018 0 0.0408739" quat="1 0 0 0" mass="0.0776323" diaginertia="0.000195998 9.16013e-05 0.00024367"/-->
+                <inertial pos="-0.0418018 0 0.0408739" quat="1 0 0 0" mass="0.7976323" diaginertia="0.000195998 9.16013e-05 0.00024367"/>
                 <joint name="joint6" pos="0 0 0" axis="0 0 1" range="-3.14 3.14" damping="0.1" armature="0.01" frictionloss="0.1"/>
                 <geom pos="0.008 -0.002 0.064" quat="0.500398 -0.5 -0.499602 0.5" type="mesh" rgba="1 1 1 1" mesh="gripper_base_100_v3" class="visual"/>
                 <geom size="0.082 0.01 0.01" pos="0.0 -0.0 0.06" quat="0.500398 -0.5 -0.499602 0.5" type="box" class="collision"/>
@@ -115,7 +116,6 @@
       <!--jointpos name="joint8_pos" joint="joint8"/-->
   </sensor>
 
-
   <actuator>
       <motor name="joint1" ctrlrange="-32 32" joint="joint1"/>
       <motor name="joint2" ctrlrange="-32 32" joint="joint2"/>
@@ -127,4 +127,11 @@
       <!--motor name="joint8" ctrlrange="-5 5" joint="joint8"/-->
       <!--position name="gripper" joint="joint7" kp="40" kv="5" forcerange="-0.5 0.5"/-->
   </actuator>
+
+  <keyframe>
+    <key name="home" qpos="0 0. -0. -0. 0 0 0.06" ctrl="0 0. -0. -0. 0 0 0"/>
+    <key name="sys_id_1" qpos="0.2 0.2 -0.5 0.2 0.2 0.2 0.0" ctrl="0 0. 0. 0. 0 0 0"/>
+    <key name="sys_id_2" qpos="0.9 0.9 -1.0 0.9 0.9 0.9 0.05" ctrl="0 0. 0. 0. 0 0 0"/>
+  </keyframe>
+
 </mujoco>
