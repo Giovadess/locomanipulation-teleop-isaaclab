@@ -5,16 +5,18 @@
 </div>
 
 ## Overview
-An IsaacLab extension by DLS for performing teleoperation with Unitree Go2 + AgileX Piper.
-
-Status: Work in progress - the train is based still on Aliengo, but it works on Go2. Arm IK can be sometimes jittering in some configuration.
+An IsaacLab DirectEnv for performing teleoperation with Unitree Go2 + AgileX Piper, with scripts for sim-to-sim and sim-to-real.
 
 Features:
 - Locomotion policy able to adjust pose and carry a manipulator
 - Manipulation controller using whole-body Inverse Kinematics with reduced model using [mink](https://github.com/kevinzakka/mink) + feedback linearization
-- End-effector reference generation via joystick
+- [Concurrent State Estimator](https://arxiv.org/pdf/2202.05481)
+- [Rapid Motor Adaptation](https://arxiv.org/pdf/2107.04034)
+- Identification of robot parameters for sim2real using [pace](https://github.com/leggedrobotics/pace-sim2real) via our repo [sim2real-robot-identification](https://github.com/iit-DLSLab/sim2real-robot-identification)
 - Sim-to-Sim in [Mujoco](https://github.com/google-deepmind/mujoco)
 - Sim-to-Real in ROS2 compatible with our public low-level robot's hal for Go2 [unitree_ros2_dls](https://github.com/iit-DLSLab/unitree_ros2_dls) and Agilex Piper arm [piper-ros2-dls](https://github.com/iit-DLSLab/piper-ros2-dls)
+
+Status: Work in progress - the train is based still on Aliengo, but it works on Go2. Arm IK can be sometimes jittering in some configuration.
 
 ## Cite this work
 
