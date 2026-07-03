@@ -15,7 +15,7 @@ def _get_concurrent_state_estimation(self):
                 self._imu.data.lin_acc_b,
                 self._imu.data.ang_vel_b,
                 self._imu.data.projected_gravity_b,
-                self._commands,
+                self._velocity_commands,
                 self._robot.data.joint_pos[:, self._ids_joints_order]
                 - self._robot.data.default_joint_pos[:, self._ids_joints_order],
                 self._robot.data.joint_vel[:, self._ids_joints_order] * self.cfg.observation_joint_vel_scale,
@@ -72,7 +72,7 @@ def _get_rma(self):
                 self._imu.data.lin_acc_b,
                 self._imu.data.ang_vel_b,
                 self._robot.data.projected_gravity_b,
-                self._commands,
+                self._velocity_commands,
                 self._robot.data.joint_pos[:, self._ids_joints_order]
                 - self._robot.data.default_joint_pos[:, self._ids_joints_order],
                 self._robot.data.joint_vel[:, self._ids_joints_order] * self.cfg.observation_joint_vel_scale,

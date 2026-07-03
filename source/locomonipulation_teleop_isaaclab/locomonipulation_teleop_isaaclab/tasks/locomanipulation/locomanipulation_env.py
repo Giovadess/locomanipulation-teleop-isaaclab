@@ -143,19 +143,21 @@ class LocomotionManipulationEnv(DirectRLEnv):
             ]
         }
         # Get specific body indices
-        self._base_id, _ = self._contact_sensor.find_bodies("base")
-        self._feet_ids, _ = self._contact_sensor.find_bodies(".*foot")
-        self._hip_ids, _ = self._contact_sensor.find_bodies(".*hip")
-        self._thigh_ids, _ = self._contact_sensor.find_bodies(".*thigh")
-        self._undesired_contact_body_ids = self._base_id + self._hip_ids + self._thigh_ids
+        self._base_contact_sensor_id, _ = self._contact_sensor.find_bodies("base")
+        self._feet_contact_sensor_ids, _ = self._contact_sensor.find_bodies(["FL_foot", "FR_foot", "RL_foot", "RR_foot"], preserve_order=True)
+        self._hip_contact_sensor_ids, _ = self._contact_sensor.find_bodies(["FL_hip", "FR_hip", "RL_hip", "RR_hip"], preserve_order=True)
+        self._thigh_contact_sensor_ids, _ = self._contact_sensor.find_bodies(["FL_thigh", "FR_thigh", "RL_thigh", "RR_thigh"], preserve_order=True)
+        self._undesired_contact_body_ids = self._base_contact_sensor_id + self._hip_contact_sensor_ids + self._thigh_contact_sensor_ids
 
         
-        self._feet_ids_robot, _ = self._robot .find_bodies(".*foot")
-        self._hip_ids_robot, _ = self._robot.find_bodies(".*hip")
+        self._feet_ids_robot, _ = self._robot.find_bodies(["FL_foot", "FR_foot", "RL_foot", "RR_foot"], preserve_order=True)
+        self._hip_ids_robot, _ = self._robot.find_bodies(["FL_hip", "FR_hip", "RL_hip", "RR_hip"], preserve_order=True)
         self._ids_joints_order = self._robot.find_joints(name_keys=self.cfg.desired_joints_order, preserve_order=True)[0]
         self._ids_only_legs_joints_order = self._robot.find_joints(name_keys=self.cfg.desired_joints_order[0:12], preserve_order=True)[0]
         self._ids_only_arms_joints_order = self._robot.find_joints(name_keys=self.cfg.desired_joints_order[12:18], preserve_order=True)[0]
 
+        if getattr(self.cfg, "visualize_edge_map", False):
+            self.set_debug_vis(True)
 
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
@@ -204,7 +206,7 @@ class LocomotionManipulationEnv(DirectRLEnv):
 
 
     def _apply_action(self):
-        processed_actions_with_arm = torch.zeros(self.num_envs, 18, device=self.device)
+        processed_actions_with_arm = torch.zeros(self.num_envs, 20, device=self.device)
         processed_actions_with_arm[:, self._ids_only_arms_joints_order] = self._joints_arm_fixed_pos.clone()
         processed_actions_with_arm[:, self._ids_only_legs_joints_order] = self._processed_actions
         self._robot.set_joint_position_target(processed_actions_with_arm)
@@ -223,7 +225,7 @@ class LocomotionManipulationEnv(DirectRLEnv):
             self._phase_signal = self._phase_signal % 1.0
             clock_data = torch.vstack([self._phase_signal[:,0], self._phase_signal[:,1], self._phase_signal[:,2], self._phase_signal[:,3]]).T
             # all the envs that are not moving, we put -1
-            should_move = torch.norm(self._commands[:, :3], dim=1) > 0.01
+            should_move = torch.norm(self._velocity_commands[:, :3], dim=1) > 0.01
             clock_data[:, :] = clock_data[:, :]*should_move.unsqueeze(1).expand(-1, 4) + -1.0* ~should_move.unsqueeze(1).expand(-1, 4)
             
 
@@ -250,8 +252,8 @@ class LocomotionManipulationEnv(DirectRLEnv):
             [
                 tensor
                 for tensor in (
-                    velocity_b,
-                    angular_velocity_b,
+                    base_linear,
+                    base_ang_vel,
                     projected_gravity_b,
                     self._velocity_commands,
                     self._pose_commands,
@@ -273,26 +275,33 @@ class LocomotionManipulationEnv(DirectRLEnv):
         joints_arm = self._robot.data.joint_pos[:,self._ids_only_arms_joints_order] - self._robot.data.default_joint_pos[:,self._ids_only_arms_joints_order]
         obs = torch.cat((obs, joints_arm), dim=-1)
 
+        observations = {"proprioceptive": obs}
 
         # Add heightmap data to obs if needed
-        if isinstance(self.cfg, AliengoRoughVisionEnvCfg):
+        if(getattr(self.cfg, "use_vision", False)):
             height_data = (
                 self._height_scanner.data.pos_w[:, 2].unsqueeze(1) - self._height_scanner.data.ray_hits_w[..., 2] - 0.5
             )
             height_data = torch.nan_to_num(height_data, nan=0.0, posinf=1.0, neginf=-1.0)
             height_data = height_data.clip(-1.0, 1.0)
             obs = torch.cat((obs, height_data), dim=-1)      
-
-
-        # Final observations dictionary
-        observations = {"policy": obs}    
         
 
         # Critic OBS could be different if needed
         if(self.cfg.use_asymmetric_ppo):
-            obs_critic = self._get_privileged_observation()
+            obs_critic = custom_observations._get_privileged_observation(self)
             observations["critic"] = torch.cat((obs, obs_critic), dim=-1)
-        # ------------------------------------------------------------------------------------------
+
+
+        # If RMA, we add some other predicted obs AFTER the critic asymmetric obs to avoid duplication
+        if(self.cfg.use_rma):
+            # Predict the RMA observation
+            obs_rma = custom_observations._get_rma(self)
+            obs = torch.cat((obs, obs_rma), dim=-1)
+
+        # Actor OBS - here after the critic to avoid duplication with rma obs
+        # if asymmetric ppo is used
+        observations["policy"] = obs    
 
         return observations
 
@@ -384,8 +393,8 @@ class LocomotionManipulationEnv(DirectRLEnv):
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         net_contact_forces = self._contact_sensor.data.net_forces_w_history
-        died_check_base = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._base_id], dim=-1), dim=1)[0] > 1.0, dim=1)
-        died_check_hips = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._hip_ids], dim=-1), dim=1)[0] > 1.0, dim=1) 
+        died_check_base = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._base_contact_sensor_id], dim=-1), dim=1)[0] > 1.0, dim=1)
+        died_check_hips = torch.any(torch.max(torch.norm(net_contact_forces[:, :, self._hip_contact_sensor_ids], dim=-1), dim=1)[0] > 1.0, dim=1) 
         died = torch.logical_or(died_check_base, died_check_hips)
         return died, time_out
 

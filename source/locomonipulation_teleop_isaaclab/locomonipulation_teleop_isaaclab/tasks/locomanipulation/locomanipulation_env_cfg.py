@@ -14,7 +14,7 @@ from isaaclab.sensors import ImuCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import GaussianNoiseCfg, NoiseModelWithAdditiveBiasCfg
 
-from locomonipulation_teleop_isaaclab.assets.go2_asset import GO2_CFG 
+from locomonipulation_teleop_isaaclab.assets.go2_piper_l_asset import GO2_CFG 
 from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG
 
 import locomonipulation_teleop_isaaclab.tasks.custom_events as custom_events
@@ -121,6 +121,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     observation_space += 3 # base angular velocity  
     observation_space += 3 # projected gravity in base frame
     observation_space += 3 # command (desired linear vel in x and y, desired yaw rate)
+    observation_space += 2 # command (height and pitch)
     observation_space += 12 # joint positions
     observation_space += 12 # joint velocities
     observation_space += 12 # last actions
@@ -139,16 +140,13 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     else:
         history_length = 1
 
-
-    observation_base_linear_scale = 1.0
-    observation_base_ang_vel_scale = 1.0
-    observation_joint_vel_scale = 0.1
+    observation_space += 6 # arm joint
 
 
     use_imu = False
 
     
-    use_concurrent_state_est = True
+    use_concurrent_state_est = False
     if(use_concurrent_state_est):
         concurrent_state_est_network_type = "tcn" # "mlp" or "tcn"
         
@@ -163,6 +161,8 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         single_concurrent_state_est_observation_space += 12 # last actions
         concurrent_state_est_history_length = 5 
         concurrent_state_est_observation_space = single_concurrent_state_est_observation_space*concurrent_state_est_history_length
+
+        concurrent_state_est_observation_space += 6 # arm joint
         
         concurrent_state_est_batch_size = 512
         concurrent_state_est_train_epochs = 1000
@@ -199,6 +199,8 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         single_rma_observation_space += 12 # last actions
         rma_history_length = 5
         rma_observation_space = single_rma_observation_space*rma_history_length
+
+        single_rma_observation_space += 6 # arm joint
     
         rma_batch_size = 512
         rma_train_epochs = 1000

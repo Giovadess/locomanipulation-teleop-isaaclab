@@ -24,7 +24,7 @@ keywords = ["extension", "template", "isaaclab"]
 # TODO: We need to define our isaaclab dependencies here
 
 [[python.module]]
-name = "locomanipulation_teleop"
+name = "locomonipulation_teleop_isaaclab"
 
 [isaaclab_settings]
 # TODO: Uncomment and list any apt dependencies here.

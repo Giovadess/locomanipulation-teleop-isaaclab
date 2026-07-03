@@ -1,9 +1,9 @@
-"""Installation script for the 'locomanipulation_teleop' python package."""
+"""Installation script for the 'locomonipulation_teleop_isaaclab' Python package."""
 
 import os
 import toml
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 # Obtain the extension data from the extension.toml file
 EXTENSION_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -19,7 +19,7 @@ INSTALL_REQUIRES = [
 # Installation operation
 setup(
     name="locomanipulation_teleop",
-    packages=["locomanipulation_teleop"],
+    packages=find_packages(),
     author=EXTENSION_TOML_DATA["package"]["author"],
     maintainer=EXTENSION_TOML_DATA["package"]["maintainer"],
     url=EXTENSION_TOML_DATA["package"]["repository"],

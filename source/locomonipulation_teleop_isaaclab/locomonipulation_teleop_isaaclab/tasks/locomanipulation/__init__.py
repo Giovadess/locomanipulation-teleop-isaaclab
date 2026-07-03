@@ -22,7 +22,7 @@ from .locomanipulation_env import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughB
 
 gym.register(
     id="Locomomanipulation-Go2-Flat",
-    entry_point=LocomotionEnv,
+    entry_point=LocomotionManipulationEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": Go2FlatEnvCfg,
@@ -32,7 +32,7 @@ gym.register(
 
 gym.register(
     id="Locomomanipulation-Go2-Rough-Blind",
-    entry_point=LocomotionEnv,
+    entry_point=LocomotionManipulationEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": Go2RoughBlindEnvCfg,
@@ -42,7 +42,7 @@ gym.register(
 
 gym.register(
     id="Locomomanipulation-Go2-Rough-Vision",
-    entry_point=LocomotionEnv,
+    entry_point=LocomotionManipulationEnv,
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": Go2RoughVisionEnvCfg,

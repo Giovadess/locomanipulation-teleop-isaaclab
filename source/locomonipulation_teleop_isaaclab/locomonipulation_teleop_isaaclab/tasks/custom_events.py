@@ -226,7 +226,7 @@ def randomize_joint_delay_model(
 
 def _sample_random_commands(self, env_ids: torch.Tensor | None = None) -> torch.Tensor:
     num_commands = self.num_envs if env_ids is None else env_ids.shape[0]
-    commands = torch.empty(num_commands, self._commands.shape[1], device=self.device, dtype=self._commands.dtype)
+    commands = torch.empty(num_commands, self._velocity_commands.shape[1], device=self.device, dtype=self._velocity_commands.dtype)
     commands.uniform_(-1.0, 1.0)
     commands[:, 0] *= 0.5
     commands[:, 1] *= 0.25
@@ -236,11 +236,11 @@ def _sample_random_commands(self, env_ids: torch.Tensor | None = None) -> torch.
 
 def _get_new_random_commands(self, env_ids: torch.Tensor | None = None):
     if env_ids is not None:
-        self._commands[env_ids, :3] = _sample_random_commands(self, env_ids)
+        self._velocity_commands[env_ids, :3] = _sample_random_commands(self, env_ids)
 
     resample_time = self.episode_length_buf == self.max_episode_length - 300
     commands_resample = torch.zeros_like(self._velocity_commands).uniform_(-1.0, 1.0)
-    commands_resample = _sample_random_commands()
+    commands_resample = _sample_random_commands(self)
     self._velocity_commands[:, :3] = self._velocity_commands[:, :3] * ~resample_time.unsqueeze(1).expand(-1, 3) + commands_resample * resample_time.unsqueeze(1).expand(-1, 3)
 
     # Stop and small pose commands
