@@ -16,17 +16,19 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv
 
 
-def randomize_joint_default_pos(
-        env: ManagerBasedEnv,
-        env_ids: torch.Tensor | None,
-        asset_cfg: SceneEntityCfg,
-        pos_distribution_params: tuple[float, float] | None = None,
-        operation: Literal["add", "scale", "abs"] = "abs",
-        distribution: Literal["uniform", "log_uniform", "gaussian"] = "uniform",
+
+def randomize_joint_parameters(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor | None,
+    asset_cfg: SceneEntityCfg,
+    friction_distribution_params: tuple[float, float] | None = None,
+    armature_distribution_params: tuple[float, float] | None = None,
+    lower_limit_distribution_params: tuple[float, float] | None = None,
+    upper_limit_distribution_params: tuple[float, float] | None = None,
+    operation: Literal["add", "scale", "abs"] = "abs",
+    distribution: Literal["uniform", "log_uniform", "gaussian"] = "uniform",
 ):
-    """
-    Randomize the joint default positions which may be different from URDF due to calibration errors.
-    """
+
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
 
@@ -40,16 +42,81 @@ def randomize_joint_default_pos(
     else:
         joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device=asset.device)
 
-    if pos_distribution_params is not None:
-        pos = asset.data.default_joint_pos.to(asset.device).clone()
-        pos = _randomize_prop_by_op(
-            pos, pos_distribution_params, env_ids, joint_ids, operation=operation, distribution=distribution
-        )[env_ids][:, joint_ids]
+    if env_ids != slice(None) and joint_ids != slice(None):
+        env_ids_for_slice = env_ids[:, None]
+    else:
+        env_ids_for_slice = env_ids
 
-        if env_ids != slice(None) and joint_ids != slice(None):
-            env_ids = env_ids[:, None]
-        asset.data.default_joint_pos[env_ids, joint_ids] = pos
+    # sample joint properties from the given ranges and set into the physics simulation
+    # joint friction coefficient
+    if friction_distribution_params is not None:
+        friction_coeff = _randomize_prop_by_op(
+            asset.data.default_joint_friction_coeff.clone(),
+            friction_distribution_params,
+            env_ids,
+            joint_ids,
+            operation=operation,
+            distribution=distribution,
+        )
 
+        # ensure the friction coefficient is non-negative
+        friction_coeff = torch.clamp(friction_coeff, min=0.0)
+
+        # Always set static friction (indexed once)
+        static_friction_coeff = friction_coeff[env_ids_for_slice, joint_ids]
+
+        # Randomize raw tensors
+        #dynamic_friction_coeff = _randomize_prop_by_op(
+        #    asset.data.default_joint_dynamic_friction_coeff.clone(),
+        #    friction_distribution_params,
+        #    env_ids,
+        #    joint_ids,
+        #    operation=operation,
+        #    distribution=distribution,
+        #)
+        viscous_friction_coeff = _randomize_prop_by_op(
+            asset.data.default_joint_viscous_friction_coeff.clone(),
+            friction_distribution_params,
+            env_ids,
+            joint_ids,
+            operation=operation,
+            distribution=distribution,
+        )
+
+        # Clamp to non-negative
+        #dynamic_friction_coeff = torch.clamp(dynamic_friction_coeff, min=0.0)
+        viscous_friction_coeff = torch.clamp(viscous_friction_coeff, min=0.0)
+
+        # Ensure dynamic ≤ static (same shape before indexing)
+        #dynamic_friction_coeff = torch.minimum(dynamic_friction_coeff, friction_coeff)
+
+        # Index once at the end
+        #dynamic_friction_coeff = dynamic_friction_coeff[env_ids_for_slice, joint_ids]
+        viscous_friction_coeff = viscous_friction_coeff[env_ids_for_slice, joint_ids]
+
+
+        # Single write call for all versions
+        asset.write_joint_friction_coefficient_to_sim(
+            joint_friction_coeff=static_friction_coeff,
+            joint_dynamic_friction_coeff=static_friction_coeff,
+            joint_viscous_friction_coeff=viscous_friction_coeff,
+            joint_ids=joint_ids,
+            env_ids=env_ids,
+        )
+
+    # joint armature
+    if armature_distribution_params is not None:
+        armature = _randomize_prop_by_op(
+            asset.data.default_joint_armature.clone(),
+            armature_distribution_params,
+            env_ids,
+            joint_ids,
+            operation=operation,
+            distribution=distribution,
+        )
+        asset.write_joint_armature_to_sim(
+            armature[env_ids_for_slice, joint_ids], joint_ids=joint_ids, env_ids=env_ids
+        )
 
 
 def randomize_joint_friction_model(
@@ -157,23 +224,35 @@ def randomize_joint_delay_model(
                 actuator.second_order_delay_filter[env_ids[:, None], actuator_joint_ids] = second_order_delay_filter
 
 
-def zero_command_velocity(
-    env: ManagerBasedEnv,
-    env_ids: torch.Tensor,
-):
-   
-    env._commands[env_ids, 0] = 0.0
-    env._commands[env_ids, 1] = 0.0
-    env._commands[env_ids, 2] = 0.0
+def _sample_random_commands(self, env_ids: torch.Tensor | None = None) -> torch.Tensor:
+    num_commands = self.num_envs if env_ids is None else env_ids.shape[0]
+    commands = torch.empty(num_commands, self._commands.shape[1], device=self.device, dtype=self._commands.dtype)
+    commands.uniform_(-1.0, 1.0)
+    commands[:, 0] *= 0.5
+    commands[:, 1] *= 0.25
+    commands[:, 2] *= 0.5
+    return commands
 
 
-def resample_command_velocity(
-    env: ManagerBasedEnv,
-    env_ids: torch.Tensor,
-):
-   
-    # Sample new commands
-    env._commands[env_ids] = torch.zeros_like(env._commands[env_ids]).uniform_(-1.0, 1.0)
-    env._commands[env_ids, 0] *= 0.5 
-    env._commands[env_ids, 1] *= 0.25 
-    env._commands[env_ids, 2] *= 0.3 
+def _get_new_random_commands(self, env_ids: torch.Tensor | None = None):
+    if env_ids is not None:
+        self._commands[env_ids, :3] = _sample_random_commands(self, env_ids)
+
+    resample_time = self.episode_length_buf == self.max_episode_length - 300
+    commands_resample = torch.zeros_like(self._velocity_commands).uniform_(-1.0, 1.0)
+    commands_resample = _sample_random_commands()
+    self._velocity_commands[:, :3] = self._velocity_commands[:, :3] * ~resample_time.unsqueeze(1).expand(-1, 3) + commands_resample * resample_time.unsqueeze(1).expand(-1, 3)
+
+    # Stop and small pose commands
+    rest_time = self.episode_length_buf >= self.max_episode_length - 150
+    specific_rest_time = self.episode_length_buf == self.max_episode_length - 100
+    self._velocity_commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)
+    self._pose_commands[:, 0] = self._pose_commands[:, 0] * ~specific_rest_time + torch.zeros_like(self._pose_commands[:,0]).uniform_(-0.3, 0.3) * specific_rest_time
+    self._pose_commands[:, 1] = self._pose_commands[:, 1] * ~specific_rest_time + torch.zeros_like(self._pose_commands[:,1]).uniform_(-0.1, 0.0) * specific_rest_time
+    
+
+    # Took some envs, and put to zero the vel
+    num_fixed_envs = 500
+    if self.num_envs > num_fixed_envs:
+        fixed_env_ids = torch.arange(num_fixed_envs, device=self.device)
+        self._velocity_commands[fixed_env_ids, :3] *= 0.0
