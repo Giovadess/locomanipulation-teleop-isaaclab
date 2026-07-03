@@ -14,72 +14,38 @@ from . import agents
 ##
 # Register Gym environments.
 ##
-from .locomotion_env import LocomotionEnv
+from .locomanipulation_env import LocomotionManipulationEnv
 
 
 # Aliengo environments
-from .locomotion_env import AliengoFlatEnvCfg, AliengoRoughVisionEnvCfg, AliengoRoughBlindEnvCfg
+from .locomanipulation_env import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCfg
 
 gym.register(
-    id="Locomotion-Aliengo-Flat",
+    id="Locomomanipulation-Go2-Flat",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": AliengoFlatEnvCfg,
+        "env_cfg_entry_point": Go2FlatEnvCfg,
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:FlatPPORunnerCfg",
     },
 )
 
 gym.register(
-    id="Locomotion-Aliengo-Rough-Blind",
+    id="Locomomanipulation-Go2-Rough-Blind",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": AliengoRoughBlindEnvCfg,
+        "env_cfg_entry_point": Go2RoughBlindEnvCfg,
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
     },
 )
 
 gym.register(
-    id="Locomotion-Aliengo-Rough-Vision",
+    id="Locomomanipulation-Go2-Rough-Vision",
     entry_point=LocomotionEnv,
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": AliengoRoughVisionEnvCfg,
+        "env_cfg_entry_point": Go2RoughVisionEnvCfg,
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
     },
 )
-
-from .manipulation_env import ManipulationEnv
-from .manipulation_env import ManipulationFlatEnvCfg, ManipulationRoughBlindEnvCfg, ManipulationRoughVisionEnvCfg
-
-gym.register(
-    id="Manipulation-Aliengo-Flat",
-    entry_point=ManipulationEnv,
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": ManipulationFlatEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:FlatPPORunnerCfg",
-    },
-)
-
-gym.register(
-    id="Manipulation-Aliengo-Rough-Blind",
-    entry_point=ManipulationEnv,
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": ManipulationRoughBlindEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
-    },
-)
-
-gym.register(
-    id="Manipulation-Aliengo-Rough-Vision",
-    entry_point=ManipulationEnv,
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": ManipulationRoughVisionEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:RoughPPORunnerCfg",
-    },
-)
-

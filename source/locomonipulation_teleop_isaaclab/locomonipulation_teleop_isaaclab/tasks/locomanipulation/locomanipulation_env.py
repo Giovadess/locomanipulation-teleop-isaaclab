@@ -23,9 +23,9 @@ from isaaclab.utils import configclass
 
 from locomonipulation_teleop_isaaclab.tasks import custom_observations, custom_rewards, custom_events
 from locomonipulation_teleop_isaaclab.tasks.supervised_learning_networks import FrozenRandomMlpEncoder, create_supervised_network
-from .locomotion_env_cfg import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCfg
+from .locomanipulation_env_cfg import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCfg
 
-class LocomotionEnv(DirectRLEnv):
+class LocomotionManipulationEnv(DirectRLEnv):
 
     def __init__(self, cfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)

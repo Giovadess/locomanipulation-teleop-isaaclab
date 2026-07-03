@@ -1,4 +1,4 @@
-<mujoco model="floatin scene">
+<mujoco model="floating scene">
   <include file="piper_l_floating.xml"/>
 
   <statistic center="0 0 0.1" extent="0.6"/>
