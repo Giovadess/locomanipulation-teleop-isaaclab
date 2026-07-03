@@ -19,7 +19,7 @@ class Console():
         # Autocomplete setup
         self.commands = [
             "help", "ictp", "goUp", "goDown", "activateRL", "activateArm",  "ictp", "setKp", "setKd",
-            "setBasePose", "setEefPose",
+            "setBasePose", "setEEPose",
         ]
         readline.set_completer(self.complete)
         readline.parse_and_bind("tab: complete")
@@ -213,7 +213,7 @@ class Console():
                     temp = input("Enter Height (m): ")
                     if(temp != ""):
                         self.controller_node.desired_pose_command_overwrite[1] = float(temp)  
-                elif input_string == "setEefPose":
+                elif input_string == "setEEPose":
                     # set desired end-effector pose performs IK to compute the corresponding joint positions and set them as desired
                     temp_x = input("Enter Target X Position (m): ")
                     temp_y = input("Enter Target Y Position (m): ")
@@ -340,5 +340,6 @@ class Console():
         print("setKp: Set the Kp values for the legs")
         print("setKd: Set the Kd values for the legs")
         print("setBasePose: Set desired base pitch and height")
+        print("setEEPose: Set desired end-effector pose (position + orientation) using IK")
         print("armHome: Move arm to home positionr\n")
         print("\nAvailable joystick commands:")
