@@ -1,5 +1,32 @@
 # Description: This script is used to run the policy on the real robot
 
+import os
+import sys
+import shlex
+import subprocess
+from pathlib import Path
+
+dir_path = Path(__file__).resolve().parent
+sys.path.append(str(dir_path / ".."))
+
+ros_ws = dir_path / "ros2_ws"
+setup_bash = ros_ws / "install" / "setup.bash"
+
+if not setup_bash.exists():
+    print("Building the msgs first...")
+    subprocess.run(["colcon", "build"], cwd=ros_ws, check=True)
+
+if os.environ.get("LOCOMANIPULATION_TELEOP_ROS2_SOURCED") != "1":
+    print("Sourcing ROS2 workspace and restarting script...")
+    cmd = (
+        f"source {shlex.quote(str(setup_bash))} && "
+        "export LOCOMANIPULATION_TELEOP_ROS2_SOURCED=1 && "
+        f"exec {shlex.quote(sys.executable)} "
+        + " ".join(shlex.quote(arg) for arg in [str(Path(__file__).resolve()), *sys.argv[1:]])
+    )
+    os.execv("/bin/bash", ["bash", "-c", cmd])
+
+
 import rclpy 
 from rclpy.node import Node 
 from sensor_msgs.msg import Joy
@@ -15,9 +42,6 @@ import time
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-
-import sys
-import os 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir_path+"/mujoco/")
 sys.path.append(dir_path+"/../")
