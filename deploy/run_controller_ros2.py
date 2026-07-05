@@ -72,9 +72,9 @@ os.system("echo -20 > /proc/" + str(pid) + "/autogroup")
 #for real time, launch it with chrt -r 99 python3 run_controller.py
 
 
-class TrashControlNode(Node):
+class LocoManipulationTeleopControlNode(Node):
     def __init__(self):
-        super().__init__('Trash_Control_Node')
+        super().__init__('Locomanipulation_Teleop_Control_Node')
 
         self.simulation_dt = 0.002
 
@@ -95,7 +95,7 @@ class TrashControlNode(Node):
                             show_right_ui=False,
                         )
             self.last_render_time = time.time()
-            self.RENDER_FREQ = 2.0  # Hz 
+            self.RENDER_FREQ = 50.0  # Hz 
 
 
         # Initialization of variables used in the main control loop --------------------------------
@@ -144,26 +144,17 @@ class TrashControlNode(Node):
 
         # --------------------------------------------------------------
         # Subscribers and Publishers
-        # callback "mutually exclusive"
-        self.cb_control = MutuallyExclusiveCallbackGroup()
-
-        # callback "mutually exclusive"
-        self.cb_inputs = MutuallyExclusiveCallbackGroup()
-        self.cb_joy = MutuallyExclusiveCallbackGroup()
-
-        self.subscription_base_state = self.create_subscription(BaseState,"/base_state", self.get_base_state_callback, 1, callback_group=self.cb_inputs)
-        self.subscription_blind_state = self.create_subscription(BlindState,"/blind_state", self.get_blind_state_callback, 1, callback_group=self.cb_inputs)
-        self.subscription_arm_blind_state = self.create_subscription(ArmState,"/arm_state", self.get_arm_blind_state_callback, 1, callback_group=self.cb_inputs)
-
-        self.subscription_joy = self.create_subscription(Joy,"/joy", self.get_joy_callback, 1, callback_group=self.cb_joy)
+        self.subscription_base_state = self.create_subscription(BaseState,"/base_state", self.get_base_state_callback, 1)
+        self.subscription_blind_state = self.create_subscription(BlindState,"/blind_state", self.get_blind_state_callback, 1)
+        self.subscription_arm_blind_state = self.create_subscription(ArmState,"/arm_state", self.get_arm_blind_state_callback, 1)
+        self.subscription_joy = self.create_subscription(Joy,"/joy", self.get_joy_callback, 1)
         
-        
-        self.publisher_trajectory_generator = self.create_publisher(TrajectoryGenerator,"/trajectory_generator", 1, callback_group=self.cb_inputs)
-        self.publisher_arm_trajectory_generator = self.create_publisher(ArmTrajectoryGenerator,"/arm_trajectory_generator", 1, callback_group=self.cb_inputs)
-        self.publisher_arm_control_signal = self.create_publisher(ArmControlSignal,"/arm_control_signal", 1, callback_group=self.cb_inputs)
+        self.publisher_trajectory_generator = self.create_publisher(TrajectoryGenerator,"/trajectory_generator", 1)
+        self.publisher_arm_trajectory_generator = self.create_publisher(ArmTrajectoryGenerator,"/arm_trajectory_generator", 1)
+        self.publisher_arm_control_signal = self.create_publisher(ArmControlSignal,"/arm_control_signal", 1)
         
         RL_FREQ = 1./(config.training_locomotion_env["sim"]["dt"]*config.training_locomotion_env["decimation"])  # Hz, frequency of the RL controller
-        self.timer = self.create_timer(1.0/RL_FREQ, self.compute_rl_control, callback_group=self.cb_control)
+        self.timer = self.create_timer(1.0/RL_FREQ, self.compute_rl_control)
 
 
         # Safety check to not do anything until a first base and blind state are received
@@ -178,11 +169,9 @@ class TrashControlNode(Node):
         self.linear_velocity = np.zeros(3)
         self.angular_velocity = np.zeros(3)
 
+        # Joystocl
         self.old_buttons = np.zeros(11)
 
-    def _world_pos_to_base_frame(self, pos_w: np.ndarray) -> np.ndarray:
-        X_WB = mujoco_utils.base_configuration(self.mjData)
-        return X_WB[:3, :3].T @ (pos_w - X_WB[:3, 3])
 
     
     def get_joy_callback(self, msg):
@@ -191,12 +180,12 @@ class TrashControlNode(Node):
         8Bitdo Ultimate 2C Wireless Controller.
         """
         if(self.console.isArmJoystickActivated):
-            filter_joystick = 0.9
+            filter_joystick = 0.7
             self.ref_ee_lin_vel[0] = self.ref_ee_lin_vel[0]*filter_joystick + (msg.axes[4]/20)*(1-filter_joystick)  # Forward/Backward
             self.ref_ee_lin_vel[1] = self.ref_ee_lin_vel[1]*filter_joystick + (msg.axes[0]/20)*(1-filter_joystick)  # Left/Right
             self.ref_ee_lin_vel[2] = self.ref_ee_lin_vel[2]*filter_joystick + (msg.axes[1]/20)*(1-filter_joystick)  # Up/Down
 
-            self.ref_ee_lin_pos = self.ref_ee_lin_pos + self.ref_ee_lin_vel * 0.03
+            self.ref_ee_lin_pos = self.ref_ee_lin_pos + self.ref_ee_lin_vel * 0.10
         else:
             filter_joystick = 0.7
             self.ref_base_lin_vel_H[0] = self.ref_base_lin_vel_H[0]*filter_joystick + (msg.axes[1]/3.5)*(1-filter_joystick)  # Forward/Backward
@@ -254,21 +243,18 @@ class TrashControlNode(Node):
         self.orientation = np.roll(np.array(msg.pose.orientation), 1) #world frame
         self.linear_velocity = np.array(msg.velocity.linear) #world frame
         self.angular_velocity = np.array(msg.velocity.angular) #base frame
-
         self.first_message_base_arrived = True
 
 
     def get_blind_state_callback(self, msg):
         self.legs_joints_position = np.array(msg.joints_position)
         self.legs_joints_velocity = np.array(msg.joints_velocity)
-
         self.first_message_legs_joints_arrived = True
 
 
     def get_arm_blind_state_callback(self, msg):        
         self.arm_joints_position = np.array(msg.joints_position)
         self.arm_joints_velocity = np.array(msg.joints_velocity)
-
         self.first_message_arm_joints_arrived = True
 
 
@@ -399,9 +385,9 @@ class TrashControlNode(Node):
         # Compute the inverse dynamics
         M = np.zeros((self.mjModel.nv, self.mjModel.nv))
         mujoco.mj_fullM(self.mjModel, M, self.mjData.qM)
-        #M = M[18:24, 18:24]
-        #tau_arm = M @ (self.Kp_arm * (self.desired_joint_pos_arm - joints_pos_arm) - self.Kd_arm * joints_vel_arm)
-        #tau_arm += self.mjData.qfrc_bias[18:24]
+        M = M[18:24, 18:24]
+        tau_arm = M @ (self.Kp_arm * (self.desired_joint_pos_arm - joints_pos_arm) - self.Kd_arm * joints_vel_arm)
+        tau_arm += self.mjData.qfrc_bias[18:24]
         arm_control_signal_msg = ArmControlSignal()
         arm_control_signal_msg.desired_arm_joints_torque = tau_arm.tolist()
         arm_control_signal_msg.desired_arm_gripper_torque = 0.0  # Placeholder for gripper torque
@@ -442,24 +428,13 @@ class TrashControlNode(Node):
 #---------------------------
 if __name__ == '__main__':
     
-    print('Hello from the trash control ros node.')
+    print('Hello from the locomanipulation teleop control ros node.')
     
     rclpy.init()
-    trash_control_node = TrashControlNode()
+    locomanipulation_teleop_control_node = LocoManipulationTeleopControlNode()
+    rclpy.spin(locomanipulation_teleop_control_node)
+    locomanipulation_teleop_control_node.destroy_node()
+    rclpy.shutdown()
 
-    # Executor multithread (>=2)
-    executor = MultiThreadedExecutor(num_threads=4)
-    executor.add_node(trash_control_node)
-    try:
-        executor.spin()
-    finally:
-        executor.shutdown()
-        trash_control_node.destroy_node()
-        rclpy.shutdown()
-
-    #rclpy.spin(trash_control_node)
-    #trash_control_node.destroy_node()
-    #rclpy.shutdown()
-
-    print("trash control ros node is stopped")
+    print("locomanipulation teleop control ros node is stopped")
     exit(0)
