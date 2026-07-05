@@ -131,6 +131,9 @@ class LocoManipulationTeleopControlNode(Node):
         self.ref_ee_lin_vel = np.array([0.0, 0.0, 0.0])
         self.ref_ee_angular_vel = np.array([1.0, 0.0, 0.0, 0.0])
         self.ref_ee_lin_pos = None #np.array([0.0, 0.0, 0.0])
+        self.last_arm_joy_time = None
+        self.arm_joy_deadband = 0.08
+        self.arm_joy_max_lin_speed = 0.15  # m/s
 
         # Interactive Command Line
         from console import Console
@@ -180,13 +183,31 @@ class LocoManipulationTeleopControlNode(Node):
         8Bitdo Ultimate 2C Wireless Controller.
         """
         if(self.console.isArmJoystickActivated):
-            filter_joystick = 0.7
-            self.ref_ee_lin_vel[0] = self.ref_ee_lin_vel[0]*filter_joystick + (msg.axes[4]/20)*(1-filter_joystick)  # Forward/Backward
-            self.ref_ee_lin_vel[1] = self.ref_ee_lin_vel[1]*filter_joystick + (msg.axes[0]/20)*(1-filter_joystick)  # Left/Right
-            self.ref_ee_lin_vel[2] = self.ref_ee_lin_vel[2]*filter_joystick + (msg.axes[1]/20)*(1-filter_joystick)  # Up/Down
+            now = time.time()
+            if self.last_arm_joy_time is None:
+                dt = 0.0
+            else:
+                dt = np.clip(now - self.last_arm_joy_time, 0.0, 0.05)
+            self.last_arm_joy_time = now
 
-            self.ref_ee_lin_pos = self.ref_ee_lin_pos + self.ref_ee_lin_vel * 0.10
+            filter_joystick = 0.7
+            raw_arm_axes = np.array([msg.axes[4], msg.axes[0], msg.axes[1]])  # Forward/Left/Up
+            raw_arm_axes[np.abs(raw_arm_axes) < self.arm_joy_deadband] = 0.0
+
+            target_ee_lin_vel = raw_arm_axes * self.arm_joy_max_lin_speed
+            if np.allclose(target_ee_lin_vel, 0.0):
+                self.ref_ee_lin_vel[:] = 0.0
+            else:
+                self.ref_ee_lin_vel = (
+                    self.ref_ee_lin_vel * filter_joystick
+                    + target_ee_lin_vel * (1 - filter_joystick)
+                )
+
+            if self.ref_ee_lin_pos is not None:
+                self.ref_ee_lin_pos = self.ref_ee_lin_pos + self.ref_ee_lin_vel * dt
         else:
+            self.last_arm_joy_time = None
+            self.ref_ee_lin_vel[:] = 0.0
             filter_joystick = 0.7
             self.ref_base_lin_vel_H[0] = self.ref_base_lin_vel_H[0]*filter_joystick + (msg.axes[1]/3.5)*(1-filter_joystick)  # Forward/Backward
             self.ref_base_lin_vel_H[1] = self.ref_base_lin_vel_H[1]*filter_joystick + (msg.axes[0]/3.5)*(1-filter_joystick)  # Left/Right
@@ -410,16 +431,12 @@ class LocoManipulationTeleopControlNode(Node):
                 #self.visualizer_data.qpos[0:2] = final_base_pose #base pitch, base z
                 #self.visualizer_data.qpos[2:8] = final_arm_joints
 
-                mujoco.mj_fwdKinematics(self.visualizer_model, self.visualizer_data)
-
-                mocap_id = self.visualizer_model.body("target").mocapid[0]
                 if(self.ref_ee_lin_pos is not None):
-                    self.visualizer_data.mocap_pos[mocap_id] = self.ref_ee_lin_pos
-                else:
-                    self.visualizer_data.mocap_pos[mocap_id] = np.array([0.2, 0.0, 0.3])
-                
+                    mocap_id = self.visualizer_model.body("target").mocapid[0]
+                    self.visualizer_data.mocap_pos[mocap_id] = self.ref_ee_lin_pos     
+
+                mujoco.mj_fwdPosition(self.visualizer_model, self.visualizer_data)               
                 # Update the camera position
-                #self.viewer.cam.lookat[:] = base_pos
                 self.viewer.sync()
                 self.last_render_time = time.time()
 
