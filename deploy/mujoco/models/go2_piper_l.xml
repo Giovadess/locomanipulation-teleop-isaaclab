@@ -257,8 +257,8 @@
             </body>
         
 
-        <geom type="mesh" rgba="1 1 1 1" mesh="base_link" class="visual"/>
-        <body name="link1" pos="0 0 0.123">
+        <geom pos="0 0 0.07" type="mesh" rgba="1 1 1 1" mesh="base_link" class="visual"/>
+        <body name="link1" pos="0 0 0.193">
             <inertial pos="0.00201 -0.0022 -0.02127" quat="0.721009 0.591428 -0.23148 0.277084" mass="0.11" diaginertia="0.000114473 0.000110765 7.12023e-05"/>
             <joint name="joint1" pos="0 0 0" axis="0 0 1" range="-2.618 2.618" damping="0.1" armature="0.01" frictionloss="0.1"/>
 

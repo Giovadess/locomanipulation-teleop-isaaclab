@@ -43,7 +43,7 @@
     </asset>
 
     <worldbody>
-        <body name="base" pos="0 0 0.445" childclass="go2">
+        <body name="base" pos="0 0 0.0" childclass="go2">
             <inertial pos="0.021112 0 -0.005366" quat="-0.000543471 0.713435 -0.00173769 0.700719" mass="6.921"
                       diaginertia="0.107027 0.0980771 0.0244531"/>
             
@@ -68,8 +68,8 @@
             <joint axis="0 0 1" name="basez" pos="0 0 0" type="slide" range="-0.1 0.1"/>
 
             
-            <geom type="mesh" rgba="1 1 1 1" mesh="base_link" class="visual"/>
-            <body name="link1" pos="0 0 0.123">
+            <geom pos="0 0 0.07" type="mesh" rgba="1 1 1 1" mesh="base_link" class="visual"/>
+            <body name="link1" pos="0 0 0.193">
               <inertial pos="0.00201 -0.0022 -0.02127" quat="0.721009 0.591428 -0.23148 0.277084" mass="0.11" diaginertia="0.000114473 0.000110765 7.12023e-05"/>
               <joint name="joint1" pos="0 0 0" axis="0 0 1" range="-2.618 2.618" damping="0.1" armature="0.01" frictionloss="0.1"/>
 

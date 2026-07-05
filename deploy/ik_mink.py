@@ -66,7 +66,11 @@ class IKMink:
 
         # Enable collision avoidance between the following geoms.
         self.collision_pairs = [
-            (["base_collision1", "base_collision2", "base_collision3"],
+            ([
+            #"base_collision1", "base_collision2", "base_collision3",
+            #"base_collision4", "base_collision5", 
+            "base_collision6", "base_collision7"
+            ],
             ["link2_collision1", "link2_collision2",
             "link3_collision1", "link3_collision2",
             "link4_collision",
@@ -78,7 +82,7 @@ class IKMink:
         self.collision_avoidance_limit = mink.CollisionAvoidanceLimit(
             model=self.model,
             geom_pairs=self.collision_pairs,  # type: ignore
-            minimum_distance_from_collisions=0.1,
+            minimum_distance_from_collisions=0.05,
             collision_detection_distance=0.15,
         )
 

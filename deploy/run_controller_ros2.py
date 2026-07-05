@@ -84,9 +84,9 @@ class TrashControlNode(Node):
         keyframe_id = mujoco.mj_name2id(self.mjModel, mujoco.mjtObj.mjOBJ_KEY, "home")
         self.mjData.qpos = self.mjModel.key_qpos[keyframe_id]
         
-        self.use_detection_visualizer = False
-        if self.use_detection_visualizer:
-            self.visualizer_model = mujoco.MjModel.from_xml_path(dir_path+"/mujoco/models/z1/scene_floating.xml")
+        self.use_ik_visualizer = True
+        if self.use_ik_visualizer:
+            self.visualizer_model = mujoco.MjModel.from_xml_path(dir_path+"/mujoco/models/scene_floating.xml")
             self.visualizer_data = mujoco.MjData(self.visualizer_model)
             self.viewer = mujoco.viewer.launch_passive(
                             self.visualizer_model,
@@ -130,7 +130,7 @@ class TrashControlNode(Node):
         self.ref_base_ang_yaw_dot = 0.0  # Desired base angular velocity around the vertical axis
         self.ref_ee_lin_vel = np.array([0.0, 0.0, 0.0])
         self.ref_ee_angular_vel = np.array([1.0, 0.0, 0.0, 0.0])
-        self.ref_ee_lin_pos = np.array([0.0, 0.0, 0.0])
+        self.ref_ee_lin_pos = None #np.array([0.0, 0.0, 0.0])
 
         # Interactive Command Line
         from console import Console
@@ -180,6 +180,10 @@ class TrashControlNode(Node):
 
         self.old_buttons = np.zeros(11)
 
+    def _world_pos_to_base_frame(self, pos_w: np.ndarray) -> np.ndarray:
+        X_WB = mujoco_utils.base_configuration(self.mjData)
+        return X_WB[:3, :3].T @ (pos_w - X_WB[:3, 3])
+
     
     def get_joy_callback(self, msg):
         """
@@ -187,12 +191,12 @@ class TrashControlNode(Node):
         8Bitdo Ultimate 2C Wireless Controller.
         """
         if(self.console.isArmJoystickActivated):
-            filter_joystick = 0.7
+            filter_joystick = 0.9
             self.ref_ee_lin_vel[0] = self.ref_ee_lin_vel[0]*filter_joystick + (msg.axes[4]/20)*(1-filter_joystick)  # Forward/Backward
             self.ref_ee_lin_vel[1] = self.ref_ee_lin_vel[1]*filter_joystick + (msg.axes[0]/20)*(1-filter_joystick)  # Left/Right
             self.ref_ee_lin_vel[2] = self.ref_ee_lin_vel[2]*filter_joystick + (msg.axes[1]/20)*(1-filter_joystick)  # Up/Down
 
-            self.ref_ee_lin_pos = self.ref_ee_lin_pos + self.ref_ee_lin_vel * 0.05
+            self.ref_ee_lin_pos = self.ref_ee_lin_pos + self.ref_ee_lin_vel * 0.03
         else:
             filter_joystick = 0.7
             self.ref_base_lin_vel_H[0] = self.ref_base_lin_vel_H[0]*filter_joystick + (msg.axes[1]/3.5)*(1-filter_joystick)  # Forward/Backward
@@ -211,29 +215,37 @@ class TrashControlNode(Node):
             os.system("pkill -f run_controller_ros2.py") 
             exit(0)
         elif self.old_buttons[7] == 0 and msg.buttons[7] == 1:
+            # + button
             print("Locomotion activation")
             self.console.isRLActivated = not self.console.isRLActivated
             self.old_buttons[7] = 1
         elif(msg.axes[7] == 1.0):
+            # up button
             print("goUp")
             self.console.goUp()
         elif(msg.axes[7] == -1.0):
+            # down button
             print("goDown")
             self.console.goDown()
 
         elif(self.old_buttons[6] == 0 and msg.buttons[6] == 1):
+            # - button
             print("activateArm")
             self.console.isArmActivated = not self.console.isArmActivated
             self.old_buttons[6] = 1
 
         elif(self.old_buttons[0] == 0 and msg.buttons[0] == 1):
+            # A button
             print("Arm only Joystick")
             self.console.isArmJoystickActivated = not self.console.isArmJoystickActivated
-            self.ref_ee_lin_pos = np.array([0.1, 0.0, 0.25])
+            if(self.ref_ee_lin_pos is None):
+                site_id = mujoco.mj_name2id(
+                    self.mjModel,
+                    mujoco.mjtObj.mjOBJ_SITE,
+                    "attachment_site"
+                )
+                self.ref_ee_lin_pos = np.array([0.2, 0.0, 0.3])
             self.old_buttons[0] = 1
-
-
-
 
 
     def get_base_state_callback(self, msg):
@@ -316,10 +328,11 @@ class TrashControlNode(Node):
         ee_quat = np.array([1.0, 0.0, 0.0, 0.0])
 
         if(self.console.isArmActivated):
-            if(self.console.isArmJoystickActivated):
+            if(self.console.isArmJoystickActivated and self.ref_ee_lin_pos is not None):
+                target_pos_ik = self.ref_ee_lin_pos
                 self.desired_pose_command, \
                     self.desired_joint_pos_arm, \
-                    ik_succeded = self.ik_mink_solver.compute(self.ref_ee_lin_pos, ee_quat, self.arm_joints_position, 
+                    ik_succeded = self.ik_mink_solver.compute(target_pos_ik, ee_quat, self.arm_joints_position, 
                                                             self.desired_pose_command, optimize_height=False, optimize_pitch=False)
         else:
             self.desired_joint_pos_arm = joints_pos_arm 
@@ -386,14 +399,43 @@ class TrashControlNode(Node):
         # Compute the inverse dynamics
         M = np.zeros((self.mjModel.nv, self.mjModel.nv))
         mujoco.mj_fullM(self.mjModel, M, self.mjData.qM)
-        M = M[18:24, 18:24]
-        tau_arm = M @ (self.Kp_arm * (self.desired_joint_pos_arm - joints_pos_arm) - self.Kd_arm * joints_vel_arm)
-        tau_arm += self.mjData.qfrc_bias[18:24]
-
+        #M = M[18:24, 18:24]
+        #tau_arm = M @ (self.Kp_arm * (self.desired_joint_pos_arm - joints_pos_arm) - self.Kd_arm * joints_vel_arm)
+        #tau_arm += self.mjData.qfrc_bias[18:24]
         arm_control_signal_msg = ArmControlSignal()
         arm_control_signal_msg.desired_arm_joints_torque = tau_arm.tolist()
         arm_control_signal_msg.desired_arm_gripper_torque = 0.0  # Placeholder for gripper torque
         self.publisher_arm_control_signal.publish(arm_control_signal_msg)
+
+
+        if self.use_ik_visualizer:
+            # Render only at a certain frequency -----------------------------------------------------------------
+            if time.time() - self.last_render_time > 1.0 / self.RENDER_FREQ:
+                """final_base_pose, \
+                    final_arm_joints, \
+                        ik_succeded = self.ik_mink_solver.compute(target_pos, target_quat, self.arm_joints_position,
+                        self.desired_pose_command_overwrite, optimize_height= True, optimize_pitch= True, visualize=False)"""
+
+                visualizer_base_pose = np.array([base_ori_euler_xyz[1], base_pos[2]])
+
+                # Set final configuration
+                self.visualizer_data.qpos[0:2] = visualizer_base_pose #base pitch, base z
+                self.visualizer_data.qpos[2:8] = self.arm_joints_position
+                #self.visualizer_data.qpos[0:2] = final_base_pose #base pitch, base z
+                #self.visualizer_data.qpos[2:8] = final_arm_joints
+
+                mujoco.mj_fwdKinematics(self.visualizer_model, self.visualizer_data)
+
+                mocap_id = self.visualizer_model.body("target").mocapid[0]
+                if(self.ref_ee_lin_pos is not None):
+                    self.visualizer_data.mocap_pos[mocap_id] = self.ref_ee_lin_pos
+                else:
+                    self.visualizer_data.mocap_pos[mocap_id] = np.array([0.2, 0.0, 0.3])
+                
+                # Update the camera position
+                #self.viewer.cam.lookat[:] = base_pos
+                self.viewer.sync()
+                self.last_render_time = time.time()
 
 
 
