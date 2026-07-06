@@ -142,12 +142,15 @@ class LocoManipulationTeleopControlNode(Node):
         thread_console.daemon = True
         thread_console.start()
 
+        from joystick import Joystick
+        self.joystick = Joystick(controller_node=self)
+
         # --------------------------------------------------------------
         # Subscribers and Publishers
         self.subscription_base_state = self.create_subscription(BaseState,"/base_state", self.get_base_state_callback, 1)
         self.subscription_blind_state = self.create_subscription(BlindState,"/blind_state", self.get_blind_state_callback, 1)
         self.subscription_arm_blind_state = self.create_subscription(ArmState,"/arm_state", self.get_arm_blind_state_callback, 1)
-        self.subscription_joy = self.create_subscription(Joy,"/joy", self.get_joy_callback, 1)
+        self.subscription_joy = self.create_subscription(Joy,"/joy", self.joystick.get_joy_callback, 1)
         
         self.publisher_trajectory_generator = self.create_publisher(TrajectoryGenerator,"/trajectory_generator", 1)
         self.publisher_arm_trajectory_generator = self.create_publisher(ArmTrajectoryGenerator,"/arm_trajectory_generator", 1)
@@ -168,91 +171,6 @@ class LocoManipulationTeleopControlNode(Node):
         self.orientation = np.zeros(4)
         self.linear_velocity = np.zeros(3)
         self.angular_velocity = np.zeros(3)
-
-        # Joystocl
-        self.old_buttons = np.zeros(11)
-
-
-    
-    def get_joy_callback(self, msg):
-        """
-        Callback function to handle joystick input. Joystick used is a 
-        8Bitdo Ultimate 2C Wireless Controller.
-        """
-        if(self.console.isArmJoystickActivated):
-            now = time.time()
-            if self.last_arm_joy_time is None:
-                dt = 0.0
-            else:
-                dt = np.clip(now - self.last_arm_joy_time, 0.0, 0.05)
-            self.last_arm_joy_time = now
-
-            filter_joystick = 0.7
-            raw_arm_axes = np.array([msg.axes[4], msg.axes[0], msg.axes[1]])  # Forward/Left/Up
-            raw_arm_axes[np.abs(raw_arm_axes) < self.arm_joy_deadband] = 0.0
-
-            target_ee_lin_vel = raw_arm_axes * self.arm_joy_max_lin_speed
-            if np.allclose(target_ee_lin_vel, 0.0):
-                self.ref_ee_lin_vel[:] = 0.0
-            else:
-                self.ref_ee_lin_vel = (
-                    self.ref_ee_lin_vel * filter_joystick
-                    + target_ee_lin_vel * (1 - filter_joystick)
-                )
-
-            if self.ref_ee_lin_pos is not None:
-                self.ref_ee_lin_pos = self.ref_ee_lin_pos + self.ref_ee_lin_vel * dt
-        else:
-            self.last_arm_joy_time = None
-            self.ref_ee_lin_vel[:] = 0.0
-            filter_joystick = 0.7
-            self.ref_base_lin_vel_H[0] = self.ref_base_lin_vel_H[0]*filter_joystick + (msg.axes[1]/3.5)*(1-filter_joystick)  # Forward/Backward
-            self.ref_base_lin_vel_H[1] = self.ref_base_lin_vel_H[1]*filter_joystick + (msg.axes[0]/3.5)*(1-filter_joystick)  # Left/Right
-            self.ref_base_ang_yaw_dot = self.ref_base_ang_yaw_dot*filter_joystick + (msg.axes[3]/2.)*(1-filter_joystick)  # Yaw
-
-        self.last_joy_time = time.time()
-
-
-        #kill the node if the button is pressed
-        if msg.buttons[8] == 1:
-            self.get_logger().info("Joystick button pressed, shutting down the node.") 
-            # This will kill the robot hal
-            os.system("kill -9 $(ps -u | grep -m 1 hal | grep -o \"^[^ ]* *[0-9]*\" | grep -o \"[0-9]*\")")
-            # This will kill the process running this script
-            os.system("pkill -f run_controller_ros2.py") 
-            exit(0)
-        elif self.old_buttons[7] == 0 and msg.buttons[7] == 1:
-            # + button
-            print("Locomotion activation")
-            self.console.isRLActivated = not self.console.isRLActivated
-            self.old_buttons[7] = 1
-        elif(msg.axes[7] == 1.0):
-            # up button
-            print("goUp")
-            #self.console.goUp()
-        elif(msg.axes[7] == -1.0):
-            # down button
-            print("goDown")
-            self.console.goDown()
-
-        elif(self.old_buttons[6] == 0 and msg.buttons[6] == 1):
-            # - button
-            print("activateArm")
-            self.console.isArmActivated = not self.console.isArmActivated
-            self.old_buttons[6] = 1
-
-        elif(msg.buttons[0] == 1):
-            # A button
-            print("Arm only Joystick")
-            self.console.isArmJoystickActivated = not self.console.isArmJoystickActivated
-            if(self.ref_ee_lin_pos is None):
-                site_id = mujoco.mj_name2id(
-                    self.mjModel,
-                    mujoco.mjtObj.mjOBJ_SITE,
-                    "attachment_site"
-                )
-                self.ref_ee_lin_pos = np.array([0.2, 0.0, 0.3])
-            #self.old_buttons[0] = 1
 
 
     def get_base_state_callback(self, msg):
@@ -337,7 +255,7 @@ class LocoManipulationTeleopControlNode(Node):
                 self.desired_pose_command, \
                     self.desired_joint_pos_arm, \
                     ik_succeded = self.ik_mink_solver.compute(target_pos_ik, ee_quat, self.arm_joints_position, 
-                                                            self.desired_pose_command, optimize_height=True, optimize_pitch=True)
+                                                            self.desired_pose_command, optimize_height=False, optimize_pitch=True)
         else:
             self.desired_joint_pos_arm = joints_pos_arm 
 
