@@ -12,14 +12,15 @@ def _get_concurrent_state_estimation(self):
         [
             tensor
             for tensor in (
-                self._imu.data.lin_acc_b,
-                self._imu.data.ang_vel_b,
+                self._imu.data.lin_acc_b * self.cfg.observation_base_linear_scale,
+                self._imu.data.ang_vel_b * self.cfg.observation_base_ang_vel_scale,
                 self._imu.data.projected_gravity_b,
                 self._velocity_commands,
-                self._robot.data.joint_pos[:, self._ids_joints_order]
-                - self._robot.data.default_joint_pos[:, self._ids_joints_order],
-                self._robot.data.joint_vel[:, self._ids_joints_order] * self.cfg.observation_joint_vel_scale,
+                self._pose_commands,
+                self._robot.data.joint_pos[:, self._ids_only_legs_joints_order] - self._robot.data.default_joint_pos[:, self._ids_only_legs_joints_order],
+                self._robot.data.joint_vel[:, self._ids_only_legs_joints_order] * self.cfg.observation_joint_vel_scale,
                 self._actions,
+                self._robot.data.joint_pos[:,self._ids_only_arms_joints_order] - self._robot.data.default_joint_pos[:,self._ids_only_arms_joints_order],
             )
             if tensor is not None
         ],
@@ -68,14 +69,15 @@ def _get_rma(self):
         [
             tensor
             for tensor in (
-                self._imu.data.lin_acc_b,
-                self._imu.data.ang_vel_b,
+                self._imu.data.lin_acc_b * self.cfg.observation_base_linear_scale,
+                self._imu.data.ang_vel_b * self.cfg.observation_base_ang_vel_scale,
                 self._robot.data.projected_gravity_b,
                 self._velocity_commands,
-                self._robot.data.joint_pos[:, self._ids_joints_order]
-                - self._robot.data.default_joint_pos[:, self._ids_joints_order],
-                self._robot.data.joint_vel[:, self._ids_joints_order] * self.cfg.observation_joint_vel_scale,
+                self._pose_commands,
+                self._robot.data.joint_pos[:, self._ids_only_legs_joints_order] - self._robot.data.default_joint_pos[:, self._ids_only_legs_joints_order],
+                self._robot.data.joint_vel[:, self._ids_only_legs_joints_order] * self.cfg.observation_joint_vel_scale,
                 self._actions,
+                self._robot.data.joint_pos[:,self._ids_only_arms_joints_order] - self._robot.data.default_joint_pos[:,self._ids_only_arms_joints_order]
             )
             if tensor is not None
         ],

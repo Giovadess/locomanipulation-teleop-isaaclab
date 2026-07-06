@@ -252,28 +252,26 @@ class LocomotionManipulationEnv(DirectRLEnv):
             [
                 tensor
                 for tensor in (
-                    base_linear,
-                    base_ang_vel,
+                    base_linear * self.cfg.observation_base_linear_scale,
+                    base_ang_vel * self.cfg.observation_base_ang_vel_scale,
                     projected_gravity_b,
                     self._velocity_commands,
                     self._pose_commands,
                     self._robot.data.joint_pos[:,self._ids_only_legs_joints_order] - self._robot.data.default_joint_pos[:,self._ids_only_legs_joints_order],
-                    self._robot.data.joint_vel[:,self._ids_only_legs_joints_order],
+                    self._robot.data.joint_vel[:,self._ids_only_legs_joints_order] * self.cfg.observation_joint_vel_scale,
                     self._actions,
                     clock_data,
+                    self._robot.data.joint_pos[:,self._ids_only_arms_joints_order] - self._robot.data.default_joint_pos[:,self._ids_only_arms_joints_order]
                 )
                 if tensor is not None
             ],
             dim=-1,
         )
+
         if(self.cfg.use_observation_history):
             #the bottom element is the newest observation!!
             self._observation_history = torch.cat((self._observation_history[:,1:,:], obs.unsqueeze(1)), dim=1)
             obs = torch.flatten(self._observation_history, start_dim=1)
-        
-        # Add joint arm info
-        joints_arm = self._robot.data.joint_pos[:,self._ids_only_arms_joints_order] - self._robot.data.default_joint_pos[:,self._ids_only_arms_joints_order]
-        obs = torch.cat((obs, joints_arm), dim=-1)
 
         observations = {"proprioceptive": obs}
 

@@ -125,6 +125,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     observation_space += 12 # joint positions
     observation_space += 12 # joint velocities
     observation_space += 12 # last actions
+    observation_space += 6 # arm joint
 
     use_clock_signal = True
     if(use_clock_signal):
@@ -140,7 +141,10 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     else:
         history_length = 1
 
-    observation_space += 6 # arm joint
+
+    observation_base_linear_scale = 1.0
+    observation_base_ang_vel_scale = 1.0
+    observation_joint_vel_scale = 0.1
 
 
     use_imu = False
@@ -156,13 +160,13 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         single_concurrent_state_est_observation_space += 3 # base angular velocity  
         single_concurrent_state_est_observation_space += 3 # projected gravity in base frame
         single_concurrent_state_est_observation_space += 3 # command (desired linear vel in x and y, desired yaw rate)
+        single_concurrent_state_est_observation_space += 2 # command (height and pitch)
         single_concurrent_state_est_observation_space += 12 # joint positions
         single_concurrent_state_est_observation_space += 12 # joint velocities
         single_concurrent_state_est_observation_space += 12 # last actions
+        single_concurrent_state_est_observation_space += 6 # arm joint
         concurrent_state_est_history_length = 5 
         concurrent_state_est_observation_space = single_concurrent_state_est_observation_space*concurrent_state_est_history_length
-
-        concurrent_state_est_observation_space += 6 # arm joint
         
         concurrent_state_est_batch_size = 512
         concurrent_state_est_train_epochs = 1000
@@ -195,13 +199,13 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         single_rma_observation_space += 3 # base angular velocity  
         single_rma_observation_space += 3 # projected gravity in base frame
         single_rma_observation_space += 3 # command (desired linear vel in x and y, desired yaw rate)
+        single_rma_observation_space += 2 # command (height and pitch)
         single_rma_observation_space += 12 # joint positions
         single_rma_observation_space += 12 # joint velocities
         single_rma_observation_space += 12 # last actions
+        single_rma_observation_space += 6 # arm joint
         rma_history_length = 5
         rma_observation_space = single_rma_observation_space*rma_history_length
-
-        single_rma_observation_space += 6 # arm joint
     
         rma_batch_size = 512
         rma_train_epochs = 1000
