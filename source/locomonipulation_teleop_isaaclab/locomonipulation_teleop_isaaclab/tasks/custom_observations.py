@@ -42,7 +42,6 @@ def _get_concurrent_state_estimation(self):
 
     # Prediction
     num_episode_from_start = self.common_step_counter / 24. #self.max_episode_length #HACK this should be taken from rsl rl
-    num_final_episode_from_start = 8000.
     if num_episode_from_start > self.cfg.concurrent_state_est_ep_saving_start:
         with torch.no_grad():
             prediction_concurrent_state_est = self._concurrent_state_est_network(obs_concurrent_state_est)
@@ -53,7 +52,7 @@ def _get_concurrent_state_estimation(self):
     # Train at some interval
     if (num_episode_from_start % self.cfg.concurrent_state_est_ep_saving_interval == 0 and
         num_episode_from_start > self.cfg.concurrent_state_est_ep_saving_start - 1 and
-            num_episode_from_start < num_final_episode_from_start - 500):  # Adjust the interval as needed
+            num_episode_from_start < self.cfg.concurrent_state_est_ep_saving_end - 500):  # Adjust the interval as needed
         self._concurrent_state_est_network.train_network(batch_size=self.cfg.concurrent_state_est_batch_size,
                                                         epochs=self.cfg.concurrent_state_est_train_epochs,
                                                         learning_rate=self.cfg.concurrent_state_est_lr, device=self.device)
@@ -103,7 +102,6 @@ def _get_rma(self):
 
     # Prediction
     num_episode_from_start = self.common_step_counter / 24. #self.max_episode_length #HACK this should be taken from rsl rl
-    num_final_episode_from_start = 8000.
     if num_episode_from_start > self.cfg.rma_ep_saving_start:
         with torch.no_grad():
             prediction_rma = self._rma_network(obs)
@@ -114,7 +112,7 @@ def _get_rma(self):
     # Train at some interval
     if (num_episode_from_start % self.cfg.rma_ep_saving_interval == 0 and
         num_episode_from_start > self.cfg.rma_ep_saving_start - 1 and
-            num_episode_from_start < num_final_episode_from_start - 500):  # Adjust the interval as needed
+            num_episode_from_start < self.cfg.rma_ep_saving_end - 500):  # Adjust the interval as needed
         self._rma_network.train_network(batch_size=self.cfg.rma_batch_size,
                                         epochs=self.cfg.rma_train_epochs,
                                         learning_rate=self.cfg.rma_lr,

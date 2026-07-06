@@ -146,7 +146,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     use_imu = False
 
     
-    use_concurrent_state_est = False
+    use_concurrent_state_est = True
     if(use_concurrent_state_est):
         concurrent_state_est_network_type = "tcn" # "mlp" or "tcn"
         
@@ -169,6 +169,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         concurrent_state_est_lr = 1e-3
         concurrent_state_est_ep_saving_interval = 1000
         concurrent_state_est_ep_saving_start = 6000
+        concurrent_state_est_ep_saving_end = 8000
 
 
     use_rma = False
@@ -207,6 +208,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
         rma_lr = 1e-3
         rma_ep_saving_interval = 1000
         rma_ep_saving_start = 6000
+        rma_ep_saving_end = 8000
 
 
     # asymmetric ppo
