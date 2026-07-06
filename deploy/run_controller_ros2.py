@@ -142,9 +142,6 @@ class LocoManipulationTeleopControlNode(Node):
         thread_console.daemon = True
         thread_console.start()
 
-        #self.console.isDown = True  # Only in this play_mujoco script
-        #self.console.isRLActivated = False  # Only in this play_mujoco script
-
         # --------------------------------------------------------------
         # Subscribers and Publishers
         self.subscription_base_state = self.create_subscription(BaseState,"/base_state", self.get_base_state_callback, 1)
@@ -232,7 +229,7 @@ class LocoManipulationTeleopControlNode(Node):
         elif(msg.axes[7] == 1.0):
             # up button
             print("goUp")
-            self.console.goUp()
+            #self.console.goUp()
         elif(msg.axes[7] == -1.0):
             # down button
             print("goDown")
@@ -244,7 +241,7 @@ class LocoManipulationTeleopControlNode(Node):
             self.console.isArmActivated = not self.console.isArmActivated
             self.old_buttons[6] = 1
 
-        elif(self.old_buttons[0] == 0 and msg.buttons[0] == 1):
+        elif(msg.buttons[0] == 1):
             # A button
             print("Arm only Joystick")
             self.console.isArmJoystickActivated = not self.console.isArmJoystickActivated
@@ -255,7 +252,7 @@ class LocoManipulationTeleopControlNode(Node):
                     "attachment_site"
                 )
                 self.ref_ee_lin_pos = np.array([0.2, 0.0, 0.3])
-            self.old_buttons[0] = 1
+            #self.old_buttons[0] = 1
 
 
     def get_base_state_callback(self, msg):
@@ -335,12 +332,12 @@ class LocoManipulationTeleopControlNode(Node):
         ee_quat = np.array([1.0, 0.0, 0.0, 0.0])
 
         if(self.console.isArmActivated):
-            if(self.console.isArmJoystickActivated and self.ref_ee_lin_pos is not None):
+            if(self.ref_ee_lin_pos is not None):
                 target_pos_ik = self.ref_ee_lin_pos
                 self.desired_pose_command, \
                     self.desired_joint_pos_arm, \
                     ik_succeded = self.ik_mink_solver.compute(target_pos_ik, ee_quat, self.arm_joints_position, 
-                                                            self.desired_pose_command, optimize_height=False, optimize_pitch=False)
+                                                            self.desired_pose_command, optimize_height=True, optimize_pitch=True)
         else:
             self.desired_joint_pos_arm = joints_pos_arm 
 

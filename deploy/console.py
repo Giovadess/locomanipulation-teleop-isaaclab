@@ -237,27 +237,13 @@ class Console():
                         qz = float(temp_qz) if temp_qz != "" else 0.0
                         target_quat = np.array([qw, qx, qy, qz])
 
-                        initial_joints_position = copy.deepcopy(self.controller_node.arm_joints_position)
-                        initial_base_pose = copy.deepcopy(getattr(self.controller_node, 'desired_pose_command', getattr(self.controller_node, 'desired_pose_command_overwrite', np.zeros(2))))
-
-                        reference_base_pose, reference_joints_position, ik_succeded = self.controller_node.ik_mink_solver.compute(
-                            target_pos, target_quat, initial_joints_position, initial_base_pose, optimize_height=False, optimize_pitch=False)
-
-                        if ik_succeded:
-                            print("IK Succeeded. Setting desired arm joints.")
-                            self.controller_node.desired_joint_pos_arm = reference_joints_position
-                            if not self.isArmActivated:
-                                print("Note: Arm is not activated. Use 'activateArm' command to execute.")
-                        else:
-                            print("IK Failed to find a solution.")
+                        self.controller_node.ref_ee_lin_pos = target_pos
+                        #self.controller_node.ref_ee_quat = target_quat
                     else:
                         print("Invalid input. X, Y, and Z positions are required.")
 
                 elif input_string =="armHome":
                     self.controller_node.state_machine.armHome(self.controller_node.arm_joints_position)
-                
-                elif input_string =="armRest":
-                    self.controller_node.state_machine.armRest(self.controller_node.arm_joints_position)
                 
                 elif input_string == "armPreReachObject":
                     self.controller_node.state_machine.armPreReachObject(self.controller_node.arm_joints_position)
@@ -270,58 +256,14 @@ class Console():
                         target_pos = [x_target_pos, y_target_pos, z_target_pos]
                         target_quat = ([ -0.7071, 0.0, -0.7071, 0])
 
-                        initial_joints_position = copy.deepcopy(self.controller_node.arm_joints_position)
-                        initial_base_pose = copy.deepcopy(self.controller_node.desired_pose_command_overwrite)
-                        
-                        reference_base_pose, \
-                            reference_joints_position, \
-                            ik_succeded = self.controller_node.ik_mink_solver.compute(target_pos, target_quat, initial_joints_position, initial_base_pose)
-                        
-                        if ik_succeded:
-                            time_motion = 3.
-                            self.run_arm_smoother(initial_joints_position, reference_joints_position, time_motion)
+                        self.controller_node.ref_ee_lin_pos = target_pos
+                        #self.controller_node.ref_ee_quat = target_quat
+
+                        time.sleep(3)
 
 
-                elif input_string == "armReachObjectRL":
-                    self.controller_node.state_machine.armReachObjectRL(self.controller_node.arm_joints_position)
-
-                elif input_string == "armReachObjectIK":
-                    self.controller_node.state_machine.armReachObjectIK(self.controller_node.arm_joints_position)
-
-                elif input_string == "armReachBasket":
-                    self.controller_node.state_machine.armReachBasket(self.controller_node.arm_joints_position)
-
-                elif input_string == "armOpenBasket":
-                    self.controller_node.state_machine.armOpenBasket(self.controller_node.arm_joints_position)
-
-                elif input_string == "armCloseGripper":
-                    print("Closing gripper")
-                    self.controller_node.state_machine.change_state(gripper_state=GripperStateType.CLOSE) # CLOSE
-
-                elif input_string == "armOpenGripper":
-                    print("Opening gripper")
-                    self.controller_node.state_machine.change_state(gripper_state=GripperStateType.OPEN) # OPEN
-
-                elif input_string == "showDetectionVisualizer":
-                    self.controller_node.use_detection_visualizer = not self.controller_node.use_detection_visualizer
-
-                # elif input_string == "getTargetIKBase":
-                #     target_pos, target_quat = self.controller_node.state_machine.detection_from_camera_to_base()
-                #     print("Target IK Position Base: ", target_pos)
-                #     print("Target IK Quaternion Base: ", target_quat)
-
-                # elif input_string == "getTargetIKCamera":
-
-                #     print("Target IK Position: ", self.controller_node.ik_goal_camera_frame)
-                #     print("Target IK Quaternion: ", self.controller_node.ik_goal_orient_camera_frame)
-
-                # elif input_string == "showIKFrames":
-                #     target_pos, target_quat = self.controller_node.state_machine.detection_from_camera_to_base()
-
-                #     initial_joints_position = copy.deepcopy(self.controller_node.arm_joints_position)
-                #     initial_base_pose = copy.deepcopy(self.controller_node.desired_pose_command_overwrite)
-
-                #     _, _, ik_succeded = self.controller_node.ik_mink_solver.compute(target_pos, target_quat, initial_joints_position, initial_base_pose)
+                elif input_string == "showIKVisualizer":
+                    self.controller_node.use_ik_visualizer = not self.controller_node.use_ik_visualizer
 
 
             except Exception as e:
