@@ -255,7 +255,7 @@ class LocoManipulationTeleopControlNode(Node):
                 self.desired_pose_command, \
                     self.desired_joint_pos_arm, \
                     ik_succeded = self.ik_mink_solver.compute(target_pos_ik, ee_quat, self.arm_joints_position, 
-                                                            self.desired_pose_command, optimize_height=False, optimize_pitch=True)
+                                                            self.desired_pose_command, optimize_height=False, optimize_pitch=False)
         else:
             self.desired_joint_pos_arm = joints_pos_arm 
 
@@ -327,7 +327,7 @@ class LocoManipulationTeleopControlNode(Node):
         arm_control_signal_msg = ArmControlSignal()
         arm_control_signal_msg.desired_arm_joints_torque = tau_arm.tolist()
         arm_control_signal_msg.desired_arm_gripper_torque = 0.0  # Placeholder for gripper torque
-        self.publisher_arm_control_signal.publish(arm_control_signal_msg)
+        #self.publisher_arm_control_signal.publish(arm_control_signal_msg)
 
 
         if self.use_ik_visualizer:
