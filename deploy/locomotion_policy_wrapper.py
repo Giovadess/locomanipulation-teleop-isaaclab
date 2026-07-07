@@ -19,6 +19,8 @@ import sys
 import os 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir_path+"/../")
+sys.path.append(dir_path+"/../source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/")
+from supervised_learning_networks import load_network
 
 class LocomotionPolicyWrapper:
     def __init__(self, mjModel):
@@ -29,11 +31,11 @@ class LocomotionPolicyWrapper:
         self.Kp_stand_up_and_down = config.Kp_stand_up_and_down
         self.Kd_stand_up_and_down = config.Kd_stand_up_and_down
 
-        self.RL_FREQ = 1./(config.training_locomotion_env["sim"]["dt"]*config.training_locomotion_env["decimation"])  # Hz, frequency of the RL controller
+        self.RL_FREQ = 1./(config.training_env["sim"]["dt"]*config.training_env["decimation"])  # Hz, frequency of the RL controller
 
 
         # RL controller initialization -------------------------------------------------------------
-        self.action_scale = config.training_locomotion_env["action_scale"]
+        self.action_scale = config.training_env["action_scale"]
         self.past_rl_actions = np.zeros(12) # only legs
         
 
@@ -43,7 +45,7 @@ class LocomotionPolicyWrapper:
 
 
         # Observation space initialization -------------------------------------------------------
-        self.use_clock_signal = config.training_locomotion_env["use_clock_signal"]
+        self.use_clock_signal = config.training_env["use_clock_signal"]
 
 
         self.step_freq = 1.4
@@ -52,20 +54,29 @@ class LocomotionPolicyWrapper:
         self.phase_signal = self.phase_offset
 
 
-        self.desired_clip_actions = config.training_locomotion_env["desired_clip_actions"]
+        self.desired_clip_actions = config.training_env["desired_clip_actions"]
 
 
-        self.use_filter_actions = config.training_locomotion_env["use_filter_actions"]
+        self.use_filter_actions = config.training_env["use_filter_actions"]
 
 
-        self.use_observation_history = config.training_locomotion_env["use_observation_history"]
+        self.use_observation_history = config.training_env["use_observation_history"]
         if(self.use_observation_history):
-            single_observation_space = config.training_locomotion_env["single_observation_space"]
-            self.history_length = config.training_locomotion_env["history_length"]
+            single_observation_space = config.training_env["single_observation_space"]
+            self.history_length = config.training_env["history_length"]
             self._observation_history = np.zeros((self.history_length, single_observation_space), dtype=np.float32)
 
 
-        self.use_vision = config.use_vision
+        try:
+            self.use_vision = config.training_env["use_vision"]
+        except:
+            self.use_vision = False
+
+        # Learned State Estimator
+        if(config.training_env["use_concurrent_state_est"] == True):
+            self._concurrent_state_est_network = load_network(config.concurrent_state_est_network, device='cpu')
+            single_concurrent_state_est_observation_space = int(config.training_env["single_concurrent_state_est_observation_space"])
+            self._observation_history_concurrent_state_est = np.zeros((self.history_length, single_concurrent_state_est_observation_space), dtype=np.float32)
 
 
         # Desired joint vector
@@ -104,15 +115,23 @@ class LocomotionPolicyWrapper:
             ref_base_ang_vel,
             ref_pose_command,
             joints_pos_arm,
+            imu_linear_acceleration=None,
+            imu_angular_velocity=None,
+            imu_orientation=None,
             heightmap_data=None):
 
 
         # Update Observation ----------------------        
-        base_projected_gravity = self._get_projected_gravity(base_quat_wxyz)
-        base_vel = base_lin_vel
-        base_ang_vel = base_ang_vel
+        if(config.training_env["use_imu"] or config.training_env["use_concurrent_state_est"]):
+            base_projected_gravity = self._get_projected_gravity(imu_orientation)
+            base_linear = imu_linear_acceleration
+            base_ang_vel = imu_angular_velocity
+        else:
+            base_projected_gravity = self._get_projected_gravity(base_quat_wxyz)
+            base_linear = base_lin_vel
+            base_ang_vel = base_ang_vel
 
-
+        
         # Get the reference base velocity in the world frame
         ref_base_lin_vel_h = heading_orientation_SO3.T@ref_base_lin_vel
         
@@ -131,7 +150,7 @@ class LocomotionPolicyWrapper:
 
         
         obs = np.concatenate([
-            base_vel, # this could be imu linear acc if use_imu or linear vel from state est
+            base_linear, # this could be imu linear acc if use_imu or linear vel from state est
             base_ang_vel,
             base_projected_gravity,
             ref_base_lin_vel_h[0:2],
@@ -144,6 +163,7 @@ class LocomotionPolicyWrapper:
             [joints_vel_FL[1]], [joints_vel_FR[1]], [joints_vel_RL[1]], [joints_vel_RR[1]],
             [joints_vel_FL[2]], [joints_vel_FR[2]], [joints_vel_RL[2]], [joints_vel_RR[2]],
             self.past_rl_actions.copy(),
+            joints_pos_arm,
         ])
 
 
@@ -156,14 +176,41 @@ class LocomotionPolicyWrapper:
             if(np.linalg.norm(commands) < 0.01):
                 obs[50:54] = -1.0
 
+
+        if(config.training_env["use_concurrent_state_est"] == True):
+
+            obs_concurrent_state_est = np.concatenate([
+                base_linear, # this could be imu linear acc if use_imu or linear vel from state est
+                base_ang_vel, # this could be imu angular vel if use_imu or angular vel from state est
+                base_projected_gravity,
+                ref_base_lin_vel_h[0:2],
+                ref_pose_command,
+                [ref_base_ang_vel[2]],
+                [joints_pos_delta_FL[0]], [joints_pos_delta_FR[0]], [joints_pos_delta_RL[0]], [joints_pos_delta_RR[0]],
+                [joints_pos_delta_FL[1]], [joints_pos_delta_FR[1]], [joints_pos_delta_RL[1]], [joints_pos_delta_RR[1]],
+                [joints_pos_delta_FL[2]], [joints_pos_delta_FR[2]], [joints_pos_delta_RL[2]], [joints_pos_delta_RR[2]],
+                [joints_vel_FL[0]], [joints_vel_FR[0]], [joints_vel_RL[0]], [joints_vel_RR[0]],
+                [joints_vel_FL[1]], [joints_vel_FR[1]], [joints_vel_RL[1]], [joints_vel_RR[1]],
+                [joints_vel_FL[2]], [joints_vel_FR[2]], [joints_vel_RL[2]], [joints_vel_RR[2]],
+                
+                self.past_rl_actions.copy(),
+                joints_pos_arm
+            ])
+            #the bottom element is the newest observation!!
+            past_concurrent_state_est = self._observation_history_concurrent_state_est[1:,:]
+            self._observation_history_concurrent_state_est = np.vstack((past_concurrent_state_est, copy.deepcopy(obs_concurrent_state_est)))
+            obs_concurrent_state_est = self._observation_history_concurrent_state_est.flatten()
             
+            # QUERY THE NETOWRK
+            base_lin_vel_predicted = self._concurrent_state_est_network(torch.tensor(obs_concurrent_state_est, dtype=torch.float32).unsqueeze(0)).detach().numpy().squeeze()
+            obs[0:3] = base_lin_vel#_predicted
+
+
         if(self.use_observation_history):
             #the bottom element is the newest observation!!
             past = self._observation_history[1:,:]
             self._observation_history = np.vstack((past, copy.deepcopy(obs)))
             obs = self._observation_history.flatten()
-
-        obs = np.concatenate((obs, joints_pos_arm), axis=0)
 
         
         if(self.use_vision):
@@ -200,7 +247,7 @@ class LocomotionPolicyWrapper:
         # Use this print to understand the order of joints in the locomotion policy
         # first HIP, then THIGH, then CALF for each leg
         # but mujoco expect per leg order FL, FR, RL, RR for each joint
-        #print("order of policy joint:", config.training_locomotion_env["desired_joints_order"])
+        #print("order of policy joint:", config.training_env["desired_joints_order"])
         rl_action = np.array([
             rl_action_temp[0], rl_action_temp[4], rl_action_temp[8],
             rl_action_temp[1], rl_action_temp[5], rl_action_temp[9],

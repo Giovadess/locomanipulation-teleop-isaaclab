@@ -14,11 +14,11 @@ from isaaclab.sensors import ImuCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import GaussianNoiseCfg, NoiseModelWithAdditiveBiasCfg
 
-from locomonipulation_teleop_isaaclab.assets.go2_piper_l_asset import GO2_CFG 
+from locomanipulation_teleop_isaaclab.assets.go2_piper_l_asset import GO2_CFG 
 from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG
 
-import locomonipulation_teleop_isaaclab.tasks.custom_events as custom_events
-import locomonipulation_teleop_isaaclab.tasks.custom_curriculums as custom_curriculums
+import locomanipulation_teleop_isaaclab.tasks.custom_events as custom_events
+import locomanipulation_teleop_isaaclab.tasks.custom_curriculums as custom_curriculums
 
 @configclass
 class EventCfg:

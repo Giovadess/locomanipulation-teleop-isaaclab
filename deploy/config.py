@@ -5,8 +5,7 @@ sys.path.append(dir_path+"/../")
 sys.path.append(dir_path+"/../scripts/rsl_rl")
 
 
-locomotion_policy_folder_path = dir_path + "/../tested_policies/locomotion/rough"
-arm_policy_folder_path = dir_path + "/../tested_policies/arm/aliengo_with_z1"
+locomotion_policy_folder_path = dir_path + "/../tested_policies/locomotion/2026-07-06_19-00-17"
 # ----------------------------------------------------------------------------------------------------------------
 
 Kp_walking = 20.0
@@ -24,6 +23,8 @@ Kd_gripper = 0.8
 # Load specific training parameters
 import yaml 
 with open(locomotion_policy_folder_path + "/params/env.yaml", "r") as file:
-    training_locomotion_env = yaml.unsafe_load(file)
+    training_env = yaml.unsafe_load(file)
 
-use_vision = False  # If True, use the vision observations in the RL policy
+concurrent_state_est_network = locomotion_policy_folder_path + "/exported/concurrent_state_estimator.pth"
+rma_network = locomotion_policy_folder_path + "/exported/rma.pth"
+

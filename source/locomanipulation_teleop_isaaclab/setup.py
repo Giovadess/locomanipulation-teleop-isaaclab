@@ -1,4 +1,4 @@
-"""Installation script for the 'locomonipulation_teleop_isaaclab' Python package."""
+"""Installation script for the 'locomanipulation_teleop_isaaclab' Python package."""
 
 import os
 import toml

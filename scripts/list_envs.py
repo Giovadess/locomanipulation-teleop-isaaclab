@@ -20,7 +20,7 @@ import gymnasium as gym
 from prettytable import PrettyTable
 
 # Import extensions to set up environment tasks
-import locomonipulation_teleop_isaaclab.tasks  # noqa: F401
+import locomanipulation_teleop_isaaclab.tasks  # noqa: F401
 
 
 def main():

@@ -94,7 +94,7 @@ from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper
 
 import isaaclab_tasks  # noqa: F401
 # Import extensions to set up environment tasks
-import locomonipulation_teleop_isaaclab.tasks  # noqa: F401
+import locomanipulation_teleop_isaaclab.tasks  # noqa: F401
 
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config

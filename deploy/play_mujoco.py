@@ -128,6 +128,15 @@ class PlayMujoco:
             joints_vel_arm = qvel[18:24]
             joints_vel_gripper = qvel[24]
 
+            if(config.training_env["use_imu"] or config.training_env["use_concurrent_state_est"]):
+                imu_linear_acceleration = self.mjData.sensordata[0:3]
+                imu_angular_velocity = self.mjData.sensordata[3:6]
+                imu_orientation = self.mjData.sensordata[9:13]
+                imu_orientation = base_quat_wxyz
+            else:
+                imu_linear_acceleration = np.zeros(3)
+                imu_angular_velocity = np.zeros(3)
+                imu_orientation = np.zeros(4)
         
             ref_base_lin_vel, ref_base_ang_vel = mujoco_utils.target_base_vel(self.mjData, self.ref_base_lin_vel_H, self.ref_base_ang_yaw_dot, frame='world')
 
@@ -163,6 +172,9 @@ class PlayMujoco:
                             ref_base_lin_vel=ref_base_lin_vel, 
                             ref_base_ang_vel=ref_base_ang_vel,
                             ref_pose_command=self.desired_pose_command_overwrite,
+                            imu_linear_acceleration=imu_linear_acceleration,
+                            imu_angular_velocity=imu_angular_velocity,
+                            imu_orientation=imu_orientation,
                             heightmap_data=self.heightmap.data if self.locomotion_policy.use_vision else None)
 
                 self.Kp_legs = self.locomotion_policy.Kp_walking

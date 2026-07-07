@@ -21,8 +21,8 @@ from isaaclab.sim import SimulationCfg
 from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.utils import configclass
 
-from locomonipulation_teleop_isaaclab.tasks import custom_observations, custom_rewards, custom_events
-from locomonipulation_teleop_isaaclab.tasks.supervised_learning_networks import FrozenRandomMlpEncoder, create_supervised_network
+from locomanipulation_teleop_isaaclab.tasks import custom_observations, custom_rewards, custom_events
+from locomanipulation_teleop_isaaclab.tasks.supervised_learning_networks import FrozenRandomMlpEncoder, create_supervised_network
 from .locomanipulation_env_cfg import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCfg
 
 class LocomotionManipulationEnv(DirectRLEnv):
