@@ -43,6 +43,8 @@ class LocomotionPolicyWrapper:
         standUp_qpos = mjModel.key_qpos[keyframe_id]
         self.default_joint_pos_leg = standUp_qpos[7:19]
 
+        self.default_joint_pos_arm = standUp_qpos[19:25]
+
 
         # Observation space initialization -------------------------------------------------------
         self.use_clock_signal = config.training_env["use_clock_signal"]
@@ -148,6 +150,17 @@ class LocomotionPolicyWrapper:
         joints_vel_RL = joints_vel_leg[6:9]
         joints_vel_RR = joints_vel_leg[9:12]
 
+        joints_pos_arm_delta = joints_pos_arm - self.default_joint_pos_arm
+
+        # Phase Signal
+        if(self.use_clock_signal):
+            self.phase_signal += self.step_freq * (1 / (self.RL_FREQ))
+            self.phase_signal = self.phase_signal % 1.0
+            clock_data = copy.copy(self.phase_signal)
+            commands = np.array([ref_base_lin_vel_h[0], ref_base_lin_vel_h[1], ref_base_ang_vel[2]], dtype=np.float32)
+            if(np.linalg.norm(commands) < 0.01):
+                clock_data = np.array([-1.0, -1.0, -1.0, -1.0], dtype=np.float32)
+        
         
         obs = np.concatenate([
             base_linear, # this could be imu linear acc if use_imu or linear vel from state est
@@ -163,38 +176,26 @@ class LocomotionPolicyWrapper:
             [joints_vel_FL[1]], [joints_vel_FR[1]], [joints_vel_RL[1]], [joints_vel_RR[1]],
             [joints_vel_FL[2]], [joints_vel_FR[2]], [joints_vel_RL[2]], [joints_vel_RR[2]],
             self.past_rl_actions.copy(),
-            joints_pos_arm,
+            clock_data if self.use_clock_signal else np.array([]),
+            joints_pos_arm_delta,
         ])
 
-
-        # Phase Signal
-        if(self.use_clock_signal):
-            self.phase_signal += self.step_freq * (1 / (self.RL_FREQ))
-            self.phase_signal = self.phase_signal % 1.0
-            obs = np.concatenate((obs, self.phase_signal), axis=0)
-            commands = np.array([ref_base_lin_vel_h[0], ref_base_lin_vel_h[1], ref_base_ang_vel[2]], dtype=np.float32)
-            if(np.linalg.norm(commands) < 0.01):
-                obs[50:54] = -1.0
-
-
         if(config.training_env["use_concurrent_state_est"] == True):
-
             obs_concurrent_state_est = np.concatenate([
-                base_linear, # this could be imu linear acc if use_imu or linear vel from state est
-                base_ang_vel, # this could be imu angular vel if use_imu or angular vel from state est
+                base_linear, 
+                base_ang_vel, 
                 base_projected_gravity,
                 ref_base_lin_vel_h[0:2],
-                ref_pose_command,
                 [ref_base_ang_vel[2]],
+                ref_pose_command,
                 [joints_pos_delta_FL[0]], [joints_pos_delta_FR[0]], [joints_pos_delta_RL[0]], [joints_pos_delta_RR[0]],
                 [joints_pos_delta_FL[1]], [joints_pos_delta_FR[1]], [joints_pos_delta_RL[1]], [joints_pos_delta_RR[1]],
                 [joints_pos_delta_FL[2]], [joints_pos_delta_FR[2]], [joints_pos_delta_RL[2]], [joints_pos_delta_RR[2]],
                 [joints_vel_FL[0]], [joints_vel_FR[0]], [joints_vel_RL[0]], [joints_vel_RR[0]],
                 [joints_vel_FL[1]], [joints_vel_FR[1]], [joints_vel_RL[1]], [joints_vel_RR[1]],
                 [joints_vel_FL[2]], [joints_vel_FR[2]], [joints_vel_RL[2]], [joints_vel_RR[2]],
-                
                 self.past_rl_actions.copy(),
-                joints_pos_arm
+                joints_pos_arm_delta
             ])
             #the bottom element is the newest observation!!
             past_concurrent_state_est = self._observation_history_concurrent_state_est[1:,:]
@@ -203,7 +204,7 @@ class LocomotionPolicyWrapper:
             
             # QUERY THE NETOWRK
             base_lin_vel_predicted = self._concurrent_state_est_network(torch.tensor(obs_concurrent_state_est, dtype=torch.float32).unsqueeze(0)).detach().numpy().squeeze()
-            obs[0:3] = base_lin_vel#_predicted
+            obs[0:3] = base_lin_vel_predicted
 
 
         if(self.use_observation_history):

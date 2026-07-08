@@ -103,12 +103,10 @@ class Console():
                     print("Going Up")
                     self.goUp()
 
-
                 elif(input_string == "goDown"):
                     print("Going Down")
                     self.goDown()
 
-                    
                 elif(input_string == "activateRL"):
                     self.isRLActivated = not self.isRLActivated
 
@@ -213,6 +211,7 @@ class Console():
                     temp = input("Enter Height (m): ")
                     if(temp != ""):
                         self.controller_node.desired_pose_command_overwrite[1] = float(temp)  
+                
                 elif input_string == "setEEPose":
                     # set desired end-effector pose performs IK to compute the corresponding joint positions and set them as desired
                     temp_x = input("Enter Target X Position (m): ")
@@ -264,6 +263,10 @@ class Console():
 
                 elif input_string == "showIKVisualizer":
                     self.controller_node.use_ik_visualizer = not self.controller_node.use_ik_visualizer
+
+                elif input_string == "closeConsole":
+                    print("Closing Console")
+                    break
 
 
             except Exception as e:
