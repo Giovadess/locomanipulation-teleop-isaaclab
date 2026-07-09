@@ -164,8 +164,8 @@ class LocomotionPolicyWrapper:
 
         if(config.training_env["use_concurrent_state_est"] == True):
             obs_concurrent_state_est = np.concatenate([
-                base_linear * config.training_env["observation_base_linear_scale"], 
-                base_ang_vel * config.training_env["observation_base_ang_vel_scale"], 
+                base_linear, 
+                base_ang_vel, 
                 base_projected_gravity,
                 ref_base_lin_vel_h[0:2],
                 [ref_base_ang_vel[2]],
@@ -173,20 +173,20 @@ class LocomotionPolicyWrapper:
                 [joints_pos_delta_FL[0]], [joints_pos_delta_FR[0]], [joints_pos_delta_RL[0]], [joints_pos_delta_RR[0]],
                 [joints_pos_delta_FL[1]], [joints_pos_delta_FR[1]], [joints_pos_delta_RL[1]], [joints_pos_delta_RR[1]],
                 [joints_pos_delta_FL[2]], [joints_pos_delta_FR[2]], [joints_pos_delta_RL[2]], [joints_pos_delta_RR[2]],
-                [joints_vel_FL[0] * config.training_env["observation_joint_vel_scale"]], 
-                [joints_vel_FR[0] * config.training_env["observation_joint_vel_scale"]], 
-                [joints_vel_RL[0] * config.training_env["observation_joint_vel_scale"]], 
-                [joints_vel_RR[0] * config.training_env["observation_joint_vel_scale"]],
+                [joints_vel_FL[0]], 
+                [joints_vel_FR[0]], 
+                [joints_vel_RL[0]], 
+                [joints_vel_RR[0]],
 
-                [joints_vel_FL[1] * config.training_env["observation_joint_vel_scale"]], 
-                [joints_vel_FR[1] * config.training_env["observation_joint_vel_scale"]], 
-                [joints_vel_RL[1] * config.training_env["observation_joint_vel_scale"]], 
-                [joints_vel_RR[1] * config.training_env["observation_joint_vel_scale"]],
+                [joints_vel_FL[1]]
+                [joints_vel_FR[1]], 
+                [joints_vel_RL[1]], 
+                [joints_vel_RR[1]],
                 
-                [joints_vel_FL[2] * config.training_env["observation_joint_vel_scale"]], 
-                [joints_vel_FR[2] * config.training_env["observation_joint_vel_scale"]], 
-                [joints_vel_RL[2] * config.training_env["observation_joint_vel_scale"]], 
-                [joints_vel_RR[2] * config.training_env["observation_joint_vel_scale"]],
+                [joints_vel_FL[2]], 
+                [joints_vel_FR[2]], 
+                [joints_vel_RL[2]], 
+                [joints_vel_RR[2]],
                 self.past_rl_actions.copy(),
                 joints_pos_arm_delta
             ])
@@ -201,8 +201,8 @@ class LocomotionPolicyWrapper:
         
         
         obs = np.concatenate([
-            base_linear * config.training_env["observation_base_linear_scale"], # this could be imu linear acc if use_imu or linear vel from state est
-            base_ang_vel * config.training_env["observation_base_ang_vel_scale"],
+            base_linear, # this could be imu linear acc if use_imu or linear vel from state est
+            base_ang_vel, # this could be imu angular vel if use_imu or angular vel from state est
             base_projected_gravity,
             ref_base_lin_vel_h[0:2],
             [ref_base_ang_vel[2]],
@@ -210,20 +210,20 @@ class LocomotionPolicyWrapper:
             [joints_pos_delta_FL[0]], [joints_pos_delta_FR[0]], [joints_pos_delta_RL[0]], [joints_pos_delta_RR[0]],
             [joints_pos_delta_FL[1]], [joints_pos_delta_FR[1]], [joints_pos_delta_RL[1]], [joints_pos_delta_RR[1]],
             [joints_pos_delta_FL[2]], [joints_pos_delta_FR[2]], [joints_pos_delta_RL[2]], [joints_pos_delta_RR[2]],
-            [joints_vel_FL[0] * config.training_env["observation_joint_vel_scale"]], 
-            [joints_vel_FR[0] * config.training_env["observation_joint_vel_scale"]], 
-            [joints_vel_RL[0] * config.training_env["observation_joint_vel_scale"]], 
-            [joints_vel_RR[0] * config.training_env["observation_joint_vel_scale"]],
+            [joints_vel_FL[0]], 
+            [joints_vel_FR[0]], 
+            [joints_vel_RL[0]], 
+            [joints_vel_RR[0]],
 
-            [joints_vel_FL[1] * config.training_env["observation_joint_vel_scale"]], 
-            [joints_vel_FR[1] * config.training_env["observation_joint_vel_scale"]], 
-            [joints_vel_RL[1] * config.training_env["observation_joint_vel_scale"]], 
-            [joints_vel_RR[1] * config.training_env["observation_joint_vel_scale"]],
+            [joints_vel_FL[1]], 
+            [joints_vel_FR[1]], 
+            [joints_vel_RL[1]], 
+            [joints_vel_RR[1]],
             
-            [joints_vel_FL[2] * config.training_env["observation_joint_vel_scale"]], 
-            [joints_vel_FR[2] * config.training_env["observation_joint_vel_scale"]], 
-            [joints_vel_RL[2] * config.training_env["observation_joint_vel_scale"]], 
-            [joints_vel_RR[2] * config.training_env["observation_joint_vel_scale"]],
+            [joints_vel_FL[2]], 
+            [joints_vel_FR[2]], 
+            [joints_vel_RL[2]], 
+            [joints_vel_RR[2]],
             self.past_rl_actions.copy(),
             clock_data if self.use_clock_signal else np.array([]),
             joints_pos_arm_delta,
