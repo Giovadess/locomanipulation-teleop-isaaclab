@@ -178,7 +178,7 @@ class LocomotionPolicyWrapper:
                 [joints_vel_RL[0]], 
                 [joints_vel_RR[0]],
 
-                [joints_vel_FL[1]]
+                [joints_vel_FL[1]],
                 [joints_vel_FR[1]], 
                 [joints_vel_RL[1]], 
                 [joints_vel_RR[1]],

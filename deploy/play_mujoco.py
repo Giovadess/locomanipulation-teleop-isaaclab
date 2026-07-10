@@ -205,11 +205,11 @@ class PlayMujoco:
             tau_arm = self.Kp_arm*error_joints_pos_arm - self.Kd_arm*joints_vel_arm
 
             # Compute the inverse dynamics
-            M = np.zeros((self.mjModel.nv, self.mjModel.nv))
-            mujoco.mj_fullM(self.mjModel, M, self.mjData.qM)
-            M = M[18:24, 18:24]
-            tau_arm += M @ (self.Kp_arm * (error_joints_pos_arm) - self.Kd_arm * joints_vel_arm)
-            tau_arm += self.mjData.qfrc_bias[18:24]
+            #M = np.zeros((self.mjModel.nv, self.mjModel.nv))
+            #mujoco.mj_fullM(self.mjModel, M, self.mjData.qM)
+            #M = M[18:24, 18:24]
+            #tau_arm += M @ (self.Kp_arm * (error_joints_pos_arm) - self.Kd_arm * joints_vel_arm)
+            #tau_arm += self.mjData.qfrc_bias[18:24]
 
             error_gripper_pos = self.desired_joint_pos_gripper - joints_pos_gripper
             tau_gripper = config.Kp_gripper*error_gripper_pos - config.Kd_gripper*joints_vel_gripper

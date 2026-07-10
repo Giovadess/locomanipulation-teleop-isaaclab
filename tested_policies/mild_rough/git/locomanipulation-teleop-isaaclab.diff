@@ -1,0 +1,115 @@
+--- git status ---
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   deploy/config.py
+	modified:   deploy/locomotion_policy_wrapper.py
+	modified:   deploy/play_mujoco.py
+	modified:   source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/locomanipulation/locomanipulation_env_cfg.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	tested_policies/2026-07-09_19-59-30/
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/deploy/config.py b/deploy/config.py
+index 38ca2f9..1a62ba8 100644
+--- a/deploy/config.py
++++ b/deploy/config.py
+@@ -5,7 +5,7 @@ sys.path.append(dir_path+"/../")
+ sys.path.append(dir_path+"/../scripts/rsl_rl")
+ 
+ 
+-locomotion_policy_folder_path = dir_path + "/../tested_policies/locomotion/2026-07-06_19-00-17"
++locomotion_policy_folder_path = dir_path + "/../tested_policies/2026-07-09_19-59-30"
+ # ----------------------------------------------------------------------------------------------------------------
+ 
+ Kp_walking = 20.0
+diff --git a/deploy/locomotion_policy_wrapper.py b/deploy/locomotion_policy_wrapper.py
+index 6324e8d..47b57e7 100644
+--- a/deploy/locomotion_policy_wrapper.py
++++ b/deploy/locomotion_policy_wrapper.py
+@@ -178,7 +178,7 @@ class LocomotionPolicyWrapper:
+                 [joints_vel_RL[0]], 
+                 [joints_vel_RR[0]],
+ 
+-                [joints_vel_FL[1]]
++                [joints_vel_FL[1]],
+                 [joints_vel_FR[1]], 
+                 [joints_vel_RL[1]], 
+                 [joints_vel_RR[1]],
+diff --git a/deploy/play_mujoco.py b/deploy/play_mujoco.py
+index 955b650..cb256cc 100644
+--- a/deploy/play_mujoco.py
++++ b/deploy/play_mujoco.py
+@@ -205,11 +205,11 @@ class PlayMujoco:
+             tau_arm = self.Kp_arm*error_joints_pos_arm - self.Kd_arm*joints_vel_arm
+ 
+             # Compute the inverse dynamics
+-            M = np.zeros((self.mjModel.nv, self.mjModel.nv))
+-            mujoco.mj_fullM(self.mjModel, M, self.mjData.qM)
+-            M = M[18:24, 18:24]
+-            tau_arm += M @ (self.Kp_arm * (error_joints_pos_arm) - self.Kd_arm * joints_vel_arm)
+-            tau_arm += self.mjData.qfrc_bias[18:24]
++            #M = np.zeros((self.mjModel.nv, self.mjModel.nv))
++            #mujoco.mj_fullM(self.mjModel, M, self.mjData.qM)
++            #M = M[18:24, 18:24]
++            #tau_arm += M @ (self.Kp_arm * (error_joints_pos_arm) - self.Kd_arm * joints_vel_arm)
++            #tau_arm += self.mjData.qfrc_bias[18:24]
+ 
+             error_gripper_pos = self.desired_joint_pos_gripper - joints_pos_gripper
+             tau_gripper = config.Kp_gripper*error_gripper_pos - config.Kd_gripper*joints_vel_gripper
+diff --git a/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/locomanipulation/locomanipulation_env_cfg.py b/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/locomanipulation/locomanipulation_env_cfg.py
+index 11b1505..1ceacea 100644
+--- a/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/locomanipulation/locomanipulation_env_cfg.py
++++ b/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/locomanipulation/locomanipulation_env_cfg.py
+@@ -363,7 +363,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
+ 
+ 
+     # Contact suggestion reward scale
+-    periodic_contact_suggestion_reward_scale =  0.5
++    periodic_contact_suggestion_reward_scale =  1.0
+     # Desired step freq and duty factor (if periodic gait contact suggestion is used)
+     desired_step_freq = 1.4
+     desired_duty_factor = 0.65
+@@ -390,31 +390,11 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
+         use_cache=False,
+         sub_terrains={
+             "flat": terrain_gen.MeshPlaneTerrainCfg(
+-                proportion=0.2
+-            ),
+-            "boxes": terrain_gen.MeshRandomGridTerrainCfg(
+-                proportion=0.1, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+-            ),
+-            "star": terrain_gen.MeshStarTerrainCfg(
+-                proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.13), platform_width=2.0,
++                proportion=0.5
+             ),
+             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
+-                proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
+-            ),
+-            "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
+-                proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
+-            ),
+-            "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
+-                proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
+-            ),
+-            "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
+-                proportion=0.15, step_height_range=(0.05, 0.13), step_width=0.3,
+-                platform_width=3.0, border_width=1.0, holes=False,
+-            ),
+-            "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
+-                proportion=0.15, step_height_range=(0.05, 0.13), step_width=0.3,
+-                platform_width=3.0, border_width=1.0, holes=False,
+-            ),
++                proportion=0.5, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
++            )
+         },
+     )
+ 
