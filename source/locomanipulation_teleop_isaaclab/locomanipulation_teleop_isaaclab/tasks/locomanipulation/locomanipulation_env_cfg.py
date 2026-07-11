@@ -41,7 +41,7 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_distribution_params": (-5.0, 5.0),
+            "mass_distribution_params": (-2.0, 10.0),
             "operation": "add",
         },
     )
@@ -127,7 +127,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     observation_space += 12 # last actions
     observation_space += 6 # arm joint
 
-    use_clock_signal = True
+    use_clock_signal = False
     if(use_clock_signal):
         observation_space += 4 # clock signal for periodic gait
 
@@ -143,7 +143,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
     use_imu = False
 
-    use_concurrent_state_est = True
+    use_concurrent_state_est = False
     if(use_concurrent_state_est):
         concurrent_state_est_network_type = "tcn" # "mlp" or "tcn"
         
@@ -309,7 +309,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
 
     # Desired clip actions
-    desired_clip_actions = 3.0
+    desired_clip_actions = 6.0
     use_filter_actions = True
         
 
@@ -338,18 +338,18 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
 
     # Feet reward scale
-    feet_air_time_reward_scale = 0.5 * 0.0
-    feet_air_time_variance_reward_scale = -1.0 * 0.0
+    feet_air_time_reward_scale = 0.25
+    feet_air_time_variance_reward_scale = -1.0
 
     feet_height_clearance_aperiodic_reward_scale = 0.25 * 0.0  
     feet_height_clearance_periodic_reward_scale = 0.25 * 0.0
     
-    feet_height_clearance_mujoco_aperiodic_reward_scale = 0.25 * 0.0
-    feet_height_clearance_mujoco_periodic_reward_scale = 0.25# * 0.0
+    feet_height_clearance_mujoco_aperiodic_reward_scale = 0.25
+    feet_height_clearance_mujoco_periodic_reward_scale = 0.25 * 0.0
     
-    feet_slide_reward_scale = -0.25 * 0.0
+    feet_slide_reward_scale = -0.25
     
-    feet_to_hip_distance_reward_scale = 1.5
+    feet_to_hip_distance_reward_scale = 2.5
     # This is used in loocmotion_env.py for the above reward
     desired_hip_offset = 0.095
 
@@ -363,13 +363,13 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
 
     # Contact suggestion reward scale
-    periodic_contact_suggestion_reward_scale =  0.5
+    periodic_contact_suggestion_reward_scale =  0.0
     # Desired step freq and duty factor (if periodic gait contact suggestion is used)
     desired_step_freq = 1.4
     desired_duty_factor = 0.65
     desired_phase_offset = [0.0, 0.5, 0.5, 0.0] #FL, FR, RL, RR
 
-    stance_contact_suggestion_reward_scale = 0.25
+    stance_contact_suggestion_reward_scale = 0.5
 
 
 
@@ -390,31 +390,11 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
         use_cache=False,
         sub_terrains={
             "flat": terrain_gen.MeshPlaneTerrainCfg(
-                proportion=0.2
-            ),
-            "boxes": terrain_gen.MeshRandomGridTerrainCfg(
-                proportion=0.1, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
-            ),
-            "star": terrain_gen.MeshStarTerrainCfg(
-                proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.13), platform_width=2.0,
+                proportion=0.5
             ),
             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
-                proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
-            ),
-            "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
-                proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
-            ),
-            "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
-                proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
-            ),
-            "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-                proportion=0.15, step_height_range=(0.05, 0.13), step_width=0.3,
-                platform_width=3.0, border_width=1.0, holes=False,
-            ),
-            "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-                proportion=0.15, step_height_range=(0.05, 0.13), step_width=0.3,
-                platform_width=3.0, border_width=1.0, holes=False,
-            ),
+                proportion=0.5, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
+            )
         },
     )
 
