@@ -36,6 +36,15 @@ class EventCfg:
         },
     )
 
+    base_com = EventTerm(
+        func=mdp.randomize_rigid_body_com,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "com_range": {"x": (-0.03, 0.03), "y": (-0.03, 0.03), "z": (-0.03, 0.03)},
+        },
+    )
+
     add_base_mass = EventTerm(
         func=mdp.randomize_rigid_body_mass,
         mode="startup",
@@ -390,11 +399,31 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
         use_cache=False,
         sub_terrains={
             "flat": terrain_gen.MeshPlaneTerrainCfg(
-                proportion=0.5
+                proportion=0.2
+            ),
+            "boxes": terrain_gen.MeshRandomGridTerrainCfg(
+                proportion=0.1, grid_width=0.45, grid_height_range=(0.05, 0.08), platform_width=2.0,
+            ),
+            "star": terrain_gen.MeshStarTerrainCfg(
+                proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.10), platform_width=2.0,
             ),
             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
-                proportion=0.5, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
-            )
+                proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
+            ),
+            "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
+                proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
+            ),
+            "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
+                proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
+            ),
+            "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
+                proportion=0.15, step_height_range=(0.05, 0.10), step_width=0.3,
+                platform_width=3.0, border_width=1.0, holes=False,
+            ),
+            "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
+                proportion=0.15, step_height_range=(0.05, 0.10), step_width=0.3,
+                platform_width=3.0, border_width=1.0, holes=False,
+            ),
         },
     )
 
