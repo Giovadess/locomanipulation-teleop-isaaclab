@@ -1,0 +1,191 @@
+--- git status ---
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/custom_rewards.py
+	modified:   source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/locomanipulation/locomanipulation_env_cfg.py
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/custom_rewards.py b/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/custom_rewards.py
+index f5e4eee..c49516e 100644
+--- a/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/custom_rewards.py
++++ b/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/custom_rewards.py
+@@ -178,17 +178,55 @@ def joints_energy_l1(self) -> torch.Tensor:
+ 
+ 
+ def feet_air_time(self) -> torch.Tensor:
+-    mode_time = 0.5
+-    current_air_time = self._contact_sensor.data.current_air_time[:, self._feet_contact_sensor_ids]
+-    current_contact_time = self._contact_sensor.data.current_contact_time[:, self._feet_contact_sensor_ids]
+-    t_max = torch.max(current_air_time, current_contact_time)
+-    t_min = torch.clip(t_max, max=mode_time)
+-    feet_air_time_per_leg = torch.where(t_max < mode_time, t_min, torch.zeros_like(t_min))
+-    feet_air_time_per_leg -= torch.where(
+-        current_air_time > mode_time, current_air_time - mode_time, torch.zeros_like(current_air_time)
++    desired_contact_time = 0.47
++    desired_air_time = 0.25
++
++    current_air_time = self._contact_sensor.data.current_air_time[
++        :, self._feet_contact_sensor_ids
++    ]
++    current_contact_time = self._contact_sensor.data.current_contact_time[
++        :, self._feet_contact_sensor_ids
++    ]
++
++    in_contact = current_contact_time > 0.0
++
++    current_time = torch.where(
++        in_contact,
++        current_contact_time,
++        current_air_time,
++    )
++
++    desired_time = torch.where(
++        in_contact,
++        torch.full_like(current_time, desired_contact_time),
++        torch.full_like(current_time, desired_air_time),
++    )
++
++    # From 0 to 1 until reach the target
++    bounded_reward = torch.clamp(
++        current_time / desired_time,
++        max=1.0,
+     )
+-    feet_air_time = torch.sum(feet_air_time_per_leg, dim=1) * (torch.norm(self._velocity_commands[:, :3], dim=1) > 0.1)
+-    return feet_air_time
++
++    # After reaching the target, apply a penalty for exceeding the desired time
++    excess_penalty = torch.clamp(
++        (current_time - desired_time) / desired_time,
++        min=0.0,
++    )
++
++    feet_reward_per_leg = bounded_reward - excess_penalty
++
++    # Limite inferiore opzionale per evitare penalità enormi.
++    feet_reward_per_leg = torch.clamp(
++        feet_reward_per_leg,
++        min=-1.0,
++        max=1.0,
++    )
++
++    should_move = torch.norm(self._velocity_commands[:, :3], dim=1) > 0.01
++
++    return torch.sum(feet_reward_per_leg, dim=1) * should_move
++
+ 
+ 
+ def feet_air_time_variance(self):
+diff --git a/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/locomanipulation/locomanipulation_env_cfg.py b/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/locomanipulation/locomanipulation_env_cfg.py
+index 11b1505..9fe9e92 100644
+--- a/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/locomanipulation/locomanipulation_env_cfg.py
++++ b/source/locomanipulation_teleop_isaaclab/locomanipulation_teleop_isaaclab/tasks/locomanipulation/locomanipulation_env_cfg.py
+@@ -41,7 +41,7 @@ class EventCfg:
+         mode="startup",
+         params={
+             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+-            "mass_distribution_params": (-5.0, 5.0),
++            "mass_distribution_params": (-2.0, 10.0),
+             "operation": "add",
+         },
+     )
+@@ -143,7 +143,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
+ 
+     use_imu = False
+ 
+-    use_concurrent_state_est = True
++    use_concurrent_state_est = False
+     if(use_concurrent_state_est):
+         concurrent_state_est_network_type = "tcn" # "mlp" or "tcn"
+         
+@@ -309,7 +309,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
+ 
+ 
+     # Desired clip actions
+-    desired_clip_actions = 3.0
++    desired_clip_actions = 6.0
+     use_filter_actions = True
+         
+ 
+@@ -338,18 +338,18 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
+ 
+ 
+     # Feet reward scale
+-    feet_air_time_reward_scale = 0.5 * 0.0
+-    feet_air_time_variance_reward_scale = -1.0 * 0.0
++    feet_air_time_reward_scale = 0.25
++    feet_air_time_variance_reward_scale = -1.0
+ 
+     feet_height_clearance_aperiodic_reward_scale = 0.25 * 0.0  
+     feet_height_clearance_periodic_reward_scale = 0.25 * 0.0
+     
+-    feet_height_clearance_mujoco_aperiodic_reward_scale = 0.25 * 0.0
+-    feet_height_clearance_mujoco_periodic_reward_scale = 0.25# * 0.0
++    feet_height_clearance_mujoco_aperiodic_reward_scale = 0.25
++    feet_height_clearance_mujoco_periodic_reward_scale = 0.25 * 0.0
+     
+-    feet_slide_reward_scale = -0.25 * 0.0
++    feet_slide_reward_scale = -0.25
+     
+-    feet_to_hip_distance_reward_scale = 1.5
++    feet_to_hip_distance_reward_scale = 2.5
+     # This is used in loocmotion_env.py for the above reward
+     desired_hip_offset = 0.095
+ 
+@@ -363,13 +363,13 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
+ 
+ 
+     # Contact suggestion reward scale
+-    periodic_contact_suggestion_reward_scale =  0.5
++    periodic_contact_suggestion_reward_scale =  0.0
+     # Desired step freq and duty factor (if periodic gait contact suggestion is used)
+     desired_step_freq = 1.4
+     desired_duty_factor = 0.65
+     desired_phase_offset = [0.0, 0.5, 0.5, 0.0] #FL, FR, RL, RR
+ 
+-    stance_contact_suggestion_reward_scale = 0.25
++    stance_contact_suggestion_reward_scale = 0.5
+ 
+ 
+ 
+@@ -390,31 +390,11 @@ class Go2RoughBlindEnvCfg(Go2FlatEnvCfg):
+         use_cache=False,
+         sub_terrains={
+             "flat": terrain_gen.MeshPlaneTerrainCfg(
+-                proportion=0.2
+-            ),
+-            "boxes": terrain_gen.MeshRandomGridTerrainCfg(
+-                proportion=0.1, grid_width=0.45, grid_height_range=(0.05, 0.10), platform_width=2.0,
+-            ),
+-            "star": terrain_gen.MeshStarTerrainCfg(
+-                proportion=0.1, num_bars=10, bar_width_range=(0.15, 0.20), bar_height_range=(0.05, 0.13), platform_width=2.0,
++                proportion=0.5
+             ),
+             "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
+-                proportion=0.1, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
+-            ),
+-            "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
+-                proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
+-            ),
+-            "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
+-                proportion=0.1, slope_range=(0.2, 0.4), platform_width=2.0, border_width=0.25
+-            ),
+-            "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
+-                proportion=0.15, step_height_range=(0.05, 0.13), step_width=0.3,
+-                platform_width=3.0, border_width=1.0, holes=False,
+-            ),
+-            "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
+-                proportion=0.15, step_height_range=(0.05, 0.13), step_width=0.3,
+-                platform_width=3.0, border_width=1.0, holes=False,
+-            ),
++                proportion=0.5, noise_range=(0.02, 0.06), noise_step=0.02, border_width=0.25
++            )
+         },
+     )
+ 
