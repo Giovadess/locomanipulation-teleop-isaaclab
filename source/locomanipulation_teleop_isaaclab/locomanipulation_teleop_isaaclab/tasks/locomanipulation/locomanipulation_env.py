@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import gymnasium as gym
 import torch
+from pxr import Sdf, UsdPhysics
 
 import isaaclab.envs.mdp as mdp
 import isaaclab.sim as sim_utils
@@ -26,6 +27,8 @@ from locomanipulation_teleop_isaaclab.tasks.supervised_learning_networks import 
 from .locomanipulation_env_cfg import Go2FlatEnvCfg, Go2RoughVisionEnvCfg, Go2RoughBlindEnvCfg
 
 class LocomotionManipulationEnv(DirectRLEnv):
+
+    _ARM_BODY_NAMES = tuple(f"link{i}" for i in range(1, 9))
 
     def __init__(self, cfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
@@ -176,6 +179,10 @@ class LocomotionManipulationEnv(DirectRLEnv):
         self.cfg.terrain.num_envs = self.scene.cfg.num_envs
         self.cfg.terrain.env_spacing = self.scene.cfg.env_spacing
         self._terrain = self.cfg.terrain.class_type(self.cfg.terrain)
+
+        # Filter arm contacts with the terrain and the quadruped on the source
+        # environment. The relationships are inherited by all cloned environments.
+        self._disable_arm_terrain_and_quadruped_collisions()
         
         # clone, filter, and replicate
         self.scene.clone_environments(copy_from_source=False)
@@ -185,6 +192,37 @@ class LocomotionManipulationEnv(DirectRLEnv):
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
 
+    def _disable_arm_terrain_and_quadruped_collisions(self):
+        """Disable Piper collisions with the terrain and the rest of the robot."""
+        robot_prim_name = self.cfg.robot.prim_path.rsplit("/", maxsplit=1)[-1]
+        source_robot_path = f"{self.scene.env_prim_paths[0]}/{robot_prim_name}"
+        source_robot_prim = self.scene.stage.GetPrimAtPath(source_robot_path)
+        if not source_robot_prim.IsValid():
+            raise RuntimeError(f"Cannot filter arm collisions: invalid robot prim '{source_robot_path}'.")
+
+        arm_body_prims = []
+        for body_name in self._ARM_BODY_NAMES:
+            body_path = f"{source_robot_path}/{body_name}"
+            body_prim = self.scene.stage.GetPrimAtPath(body_path)
+            if not body_prim.IsValid() or not body_prim.HasAPI(UsdPhysics.RigidBodyAPI):
+                raise RuntimeError(f"Cannot filter arm collisions: invalid rigid body prim '{body_path}'.")
+            arm_body_prims.append(body_prim)
+
+        quadruped_body_paths = [
+            prim.GetPath()
+            for prim in source_robot_prim.GetChildren()
+            if prim.HasAPI(UsdPhysics.RigidBodyAPI) and prim.GetName() not in self._ARM_BODY_NAMES
+        ]
+        if not quadruped_body_paths:
+            raise RuntimeError(f"Cannot filter arm collisions: no quadruped rigid bodies found below '{source_robot_path}'.")
+
+        filtered_target_paths = [Sdf.Path(self.cfg.terrain.prim_path), *quadruped_body_paths]
+
+        for body_prim in arm_body_prims:
+            filtered_pairs_api = UsdPhysics.FilteredPairsAPI.Apply(body_prim)
+            filtered_pairs_rel = filtered_pairs_api.CreateFilteredPairsRel()
+            for target_path in filtered_target_paths:
+                filtered_pairs_rel.AddTarget(target_path)
 
     def _pre_physics_step(self, actions: torch.Tensor):
         self._previous_previous_actions = self._previous_actions.clone()
