@@ -224,6 +224,55 @@ def randomize_joint_delay_model(
                 actuator.second_order_delay_filter[env_ids[:, None], actuator_joint_ids] = second_order_delay_filter
 
 
+def _sample_arm_trajectory(self, env_ids: torch.Tensor):
+    """Sample a new arm target and trajectory timing for the selected environments."""
+    num_envs = env_ids.shape[0]
+    self._arm_trajectory_start_pos[env_ids] = self._joints_arm_command_pos[env_ids]
+
+    arm_limits = self._robot.data.default_joint_pos_limits[env_ids][:, self._ids_only_arms_joints_order]
+    lower_limits = arm_limits[..., 0]
+    upper_limits = arm_limits[..., 1]
+    self._arm_trajectory_target_pos[env_ids] = lower_limits + torch.rand_like(lower_limits) * (
+        upper_limits - lower_limits
+    )
+
+    duration_min, duration_max = self.cfg.arm_trajectory_duration_range_s
+    self._arm_trajectory_duration_s[env_ids] = torch.empty(num_envs, device=self.device).uniform_(
+        duration_min, duration_max
+    )
+
+    update_min, update_max = self.cfg.arm_target_update_interval_range_s
+    self._arm_target_update_interval_s[env_ids] = torch.empty(num_envs, device=self.device).uniform_(
+        update_min, update_max
+    )
+    self._arm_trajectory_elapsed_s[env_ids] = 0.0
+    self._arm_target_elapsed_s[env_ids] = 0.0
+
+
+def _update_arm_trajectory(self):
+    """Advance every arm along its current linear joint-space trajectory."""
+    self._arm_trajectory_elapsed_s += self.step_dt
+    self._arm_target_elapsed_s += self.step_dt
+
+    interpolation = torch.clamp(
+        self._arm_trajectory_elapsed_s / self._arm_trajectory_duration_s,
+        min=0.0,
+        max=1.0,
+    ).unsqueeze(1)
+    self._joints_arm_command_pos = torch.lerp(
+        self._arm_trajectory_start_pos,
+        self._arm_trajectory_target_pos,
+        interpolation,
+    )
+
+    resample_env_ids = torch.nonzero(
+        self._arm_target_elapsed_s >= self._arm_target_update_interval_s,
+        as_tuple=False,
+    ).squeeze(-1)
+    if resample_env_ids.numel() > 0:
+        _sample_arm_trajectory(self, resample_env_ids)
+
+
 def _sample_random_commands(self, env_ids: torch.Tensor | None = None) -> torch.Tensor:
     num_commands = self.num_envs if env_ids is None else env_ids.shape[0]
     commands = torch.empty(num_commands, self._velocity_commands.shape[1], device=self.device, dtype=self._velocity_commands.dtype)

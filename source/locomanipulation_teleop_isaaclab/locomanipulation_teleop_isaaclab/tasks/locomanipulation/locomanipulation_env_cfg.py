@@ -125,6 +125,13 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     episode_length_s = 20.0
     decimation = 4
     action_scale = 0.5
+
+    # Arm joint-space target trajectory. A target is kept long enough for the
+    # linear trajectory to finish, then a new one is sampled independently for
+    # each environment.
+    arm_target_update_interval_range_s = (2.0, 4.0)
+    arm_trajectory_duration_range_s = (0.75, 1.5)
+
     action_space = 12
     observation_space = 3 # base linear velocity
     observation_space += 3 # base angular velocity  

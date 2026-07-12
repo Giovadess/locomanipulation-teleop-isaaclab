@@ -46,8 +46,28 @@ class LocomotionManipulationEnv(DirectRLEnv):
         self._velocity_commands = torch.zeros(self.num_envs, 3, device=self.device)
         self._pose_commands = torch.zeros(self.num_envs, 2, device=self.device) # pitch height
 
-        # Arm fixed position
-        self._joints_arm_fixed_pos = torch.zeros(self.num_envs, 6, device=self.device)
+        # Arm joint-space trajectories (one target and timer per environment)
+        self._joints_arm_command_pos = torch.zeros(self.num_envs, 6, device=self.device)
+        self._arm_trajectory_start_pos = torch.zeros_like(self._joints_arm_command_pos)
+        self._arm_trajectory_target_pos = torch.zeros_like(self._joints_arm_command_pos)
+        self._arm_trajectory_elapsed_s = torch.zeros(self.num_envs, device=self.device)
+        self._arm_trajectory_duration_s = torch.zeros(self.num_envs, device=self.device)
+        self._arm_target_elapsed_s = torch.zeros(self.num_envs, device=self.device)
+        self._arm_target_update_interval_s = torch.zeros(self.num_envs, device=self.device)
+
+        arm_duration_range = self.cfg.arm_trajectory_duration_range_s
+        arm_update_range = self.cfg.arm_target_update_interval_range_s
+        if arm_duration_range[0] <= 0.5 or arm_duration_range[0] > arm_duration_range[1]:
+            raise ValueError(
+                "arm_trajectory_duration_range_s must be ordered and have a minimum strictly greater than 0.5 s."
+            )
+        if arm_update_range[0] <= 0.0 or arm_update_range[0] > arm_update_range[1]:
+            raise ValueError("arm_target_update_interval_range_s must contain positive, ordered values.")
+        if arm_update_range[0] < arm_duration_range[1]:
+            raise ValueError(
+                "The minimum arm target update interval must be greater than or equal to the maximum trajectory "
+                "duration, otherwise the arm cannot reach every sampled target."
+            )
 
         # Swing peak
         self._swing_peak = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs,1)
@@ -242,10 +262,9 @@ class LocomotionManipulationEnv(DirectRLEnv):
             #self._processed_actions = self.cfg.action_scale * self._actions + self._robot.data.default_joint_pos[:,0:12]
             self._processed_actions = self.cfg.action_scale * self._actions + self._robot.data.default_joint_pos[:,self._ids_joints_order[0:12]]
 
-
     def _apply_action(self):
         processed_actions_with_arm = torch.zeros(self.num_envs, 20, device=self.device)
-        processed_actions_with_arm[:, self._ids_only_arms_joints_order] = self._joints_arm_fixed_pos.clone()
+        processed_actions_with_arm[:, self._ids_only_arms_joints_order] = self._joints_arm_command_pos
         processed_actions_with_arm[:, self._ids_only_legs_joints_order] = self._processed_actions
         self._robot.set_joint_position_target(processed_actions_with_arm)
 
@@ -253,6 +272,7 @@ class LocomotionManipulationEnv(DirectRLEnv):
     def _get_observations(self) -> dict:
         
         # Sample new commands if needed
+        custom_events._update_arm_trajectory(self)
         custom_events._get_new_random_commands(self)
 
 
@@ -485,8 +505,9 @@ class LocomotionManipulationEnv(DirectRLEnv):
         joints_arm_limits = joints_limits[:,self._ids_only_arms_joints_order]
         joint_pos[:, self._ids_only_arms_joints_order] = torch.clamp(joint_pos[:, self._ids_only_arms_joints_order], joints_arm_limits[0,:,0], joints_arm_limits[0,:,1])
 
-        # we save the arm positions to keep them fixed during the episode via PD control
-        self._joints_arm_fixed_pos[env_ids] = joint_pos[:, self._ids_only_arms_joints_order].clone()
+        # Start from the reset pose and sample an independent target trajectory for each environment.
+        self._joints_arm_command_pos[env_ids] = joint_pos[:, self._ids_only_arms_joints_order]
+        custom_events._sample_arm_trajectory(self, env_ids)
         
         joint_vel = self._robot.data.default_joint_vel[env_ids]
         
