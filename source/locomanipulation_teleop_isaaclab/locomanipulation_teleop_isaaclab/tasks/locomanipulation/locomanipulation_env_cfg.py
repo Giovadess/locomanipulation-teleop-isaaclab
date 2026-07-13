@@ -129,7 +129,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     # Arm joint-space target trajectory. A target is kept long enough for the
     # linear trajectory to finish, then a new one is sampled independently for
     # each environment.
-    arm_trajectory_event_start = 4000
+    arm_trajectory_event_start = 0
     arm_target_update_interval_range_s = (2.0, 4.0)
     arm_trajectory_duration_range_s = (2.5, 5.0)
 
