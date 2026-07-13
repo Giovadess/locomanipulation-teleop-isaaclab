@@ -299,7 +299,7 @@ def _get_new_random_commands(self, env_ids: torch.Tensor | None = None):
     specific_rest_time = self.episode_length_buf == self.max_episode_length - 100
     self._velocity_commands[:, :3] *= ~rest_time.unsqueeze(1).expand(-1, 3)
     self._pose_commands[:, 0] = self._pose_commands[:, 0] * ~specific_rest_time + torch.zeros_like(self._pose_commands[:,0]).uniform_(-0.3, 0.3) * specific_rest_time
-    self._pose_commands[:, 1] = self._pose_commands[:, 1] * ~specific_rest_time + torch.zeros_like(self._pose_commands[:,1]).uniform_(-0.1, 0.0) * specific_rest_time
+    #self._pose_commands[:, 1] = self._pose_commands[:, 1] * ~specific_rest_time + torch.zeros_like(self._pose_commands[:,1]).uniform_(-0.1, 0.0) * specific_rest_time
     
 
     # Took some envs, and put to zero the vel
