@@ -74,8 +74,8 @@ PIPER_ARM_ACTUATOR_CFG = PaceDCMotorCfg(
     saturation_effort=45.43,
     effort_limit=45.43,
     velocity_limit=15.7,
-    stiffness={".*": 30.0},  # P gain in Nm/rad
-    damping={".*": 1.5},  # D gain in Nm s/rad
+    stiffness={".*": 50.0},  # P gain in Nm/rad
+    damping={".*": 1.0},  # D gain in Nm s/rad
     encoder_bias={".*": 0.0},  # encoder bias in radians
     # note: modeling coulomb friction if friction = dynamic_friction
     # > in newer Isaac Sim versions, friction is renamed to static_friction
