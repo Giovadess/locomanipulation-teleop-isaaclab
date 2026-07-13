@@ -144,7 +144,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     observation_space += 12 # last actions
     observation_space += 6 # arm joint
 
-    use_clock_signal = False
+    use_clock_signal = True
     if(use_clock_signal):
         observation_space += 4 # clock signal for periodic gait
 
