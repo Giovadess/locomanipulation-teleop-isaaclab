@@ -3,6 +3,7 @@ import threading
 import time
 
 import numpy as np
+from sensor_msgs.msg import JointState
 
 
 class Joystick:
@@ -14,6 +15,15 @@ class Joystick:
         # Previous joystick state, used to trigger commands only on rising edges.
         self.old_buttons = np.zeros(11)
         self.old_axes = np.zeros(8)
+        self.gripper_open_position = 0.1
+        self.gripper_closed_position = 0.0
+        self.gripper_is_open = False
+
+    def _publish_gripper_command(self, position):
+        msg = JointState()
+        msg.name = ["gripper"]
+        msg.position = [position]
+        self.controller_node.publisher_gripper_command.publish(msg)
 
     def _is_command_ready(self, command_name):
         now = time.time()
@@ -51,6 +61,11 @@ class Joystick:
             self.old_buttons = np.zeros(len(msg.buttons))
         if len(self.old_axes) != len(msg.axes):
             self.old_axes = np.zeros(len(msg.axes))
+
+        # Axes 0, 1, 3, 4 are read below without per-access bounds checks;
+        # a short/malformed Joy message (e.g. during joystick reconnect) would crash the node.
+        if len(msg.axes) < 5:
+            return
 
         if node.console.isArmJoystickActivated:
             now = time.time()
@@ -118,6 +133,16 @@ class Joystick:
             # - button
             print("Arm activation")
             node.console.isArmActivated = not node.console.isArmActivated
+
+        elif self._button_pressed(msg, 4, "toggle_gripper"):
+            # LB button toggles gripper open/closed
+            self.gripper_is_open = not self.gripper_is_open
+            if self.gripper_is_open:
+                self._publish_gripper_command(self.gripper_open_position)
+                print("Opening gripper")
+            else:
+                self._publish_gripper_command(self.gripper_closed_position)
+                print("Closing gripper")
 
         elif self._button_pressed(msg, 0, "activate_arm_joystick"):
             # A button

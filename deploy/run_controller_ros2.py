@@ -29,8 +29,8 @@ if os.environ.get("LOCOMANIPULATION_TELEOP_ROS2_SOURCED") != "1":
 
 import rclpy 
 from rclpy.node import Node 
-from sensor_msgs.msg import Joy
-from dls2_interface.msg import BaseState, BlindState, TrajectoryGenerator, ArmState, ArmTrajectoryGenerator, ArmControlSignal
+from sensor_msgs.msg import Joy, JointState
+from dls2_interface.msg import BaseState, BlindState, TrajectoryGenerator
 from geometry_msgs.msg import PoseArray
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
@@ -57,7 +57,6 @@ from heightmap import HeightMap
 
 # Controller imports
 from locomotion_policy_wrapper import LocomotionPolicyWrapper
-from ik_mink import IKMink
 
 
 import config
@@ -100,7 +99,6 @@ class LocoManipulationTeleopControlNode(Node):
 
         # Initialization of variables used in the main control loop --------------------------------
         self.locomotion_policy = LocomotionPolicyWrapper(mjModel=self.mjModel)
-        self.ik_mink_solver = IKMink()
 
         if(self.locomotion_policy.use_vision):
             resolution_heightmap = config.resolution_heightmap
@@ -115,7 +113,6 @@ class LocoManipulationTeleopControlNode(Node):
         self.legs_joints_position = np.zeros(12)  # 12 leg joints
         self.legs_joints_velocity = np.zeros(12)  # 12 leg joints 
         self.desired_joint_pos_arm = np.zeros(6)
-        self.desired_joint_pos_gripper = 0
         self.desired_joint_pos_leg = self.mjData.qpos[7:19]
         self.desired_pose_command = np.zeros(2)
         self.Kp_legs = config.Kp_stand_up_and_down
@@ -149,12 +146,11 @@ class LocoManipulationTeleopControlNode(Node):
         # Subscribers and Publishers
         self.subscription_base_state = self.create_subscription(BaseState,"/base_state", self.get_base_state_callback, 1)
         self.subscription_blind_state = self.create_subscription(BlindState,"/blind_state", self.get_blind_state_callback, 1)
-        self.subscription_arm_blind_state = self.create_subscription(ArmState,"/arm_state", self.get_arm_blind_state_callback, 1)
+        self.subscription_arm_joint_states = self.create_subscription(JointState, "/leader/feedback/joint_states", self.get_arm_joint_states_callback, 1)
         self.subscription_joy = self.create_subscription(Joy,"/joy", self.joystick.get_joy_callback, 1)
         
         self.publisher_trajectory_generator = self.create_publisher(TrajectoryGenerator,"/trajectory_generator", 1)
-        self.publisher_arm_trajectory_generator = self.create_publisher(ArmTrajectoryGenerator,"/arm_trajectory_generator", 1)
-        self.publisher_arm_control_signal = self.create_publisher(ArmControlSignal,"/arm_control_signal", 1)
+        self.publisher_gripper_command = self.create_publisher(JointState, "/leader/control/joint_states", 1)
         
         RL_FREQ = 1./(config.training_env["sim"]["dt"]*config.training_env["decimation"])  # Hz, frequency of the RL controller
         self.timer = self.create_timer(1.0/RL_FREQ, self.compute_rl_control)
@@ -188,11 +184,22 @@ class LocoManipulationTeleopControlNode(Node):
         self.first_message_legs_joints_arrived = True
 
 
-    def get_arm_blind_state_callback(self, msg):        
-        self.arm_joints_position = np.array(msg.joints_position)
-        self.arm_joints_velocity = np.array(msg.joints_velocity)
+    def get_arm_joint_states_callback(self, msg):
+        if len(msg.position) < 6:
+            return
+        self.arm_joints_position = np.array(msg.position[:6])
+        self.arm_joints_velocity = np.array(msg.velocity[:6]) if len(msg.velocity) >= 6 else np.zeros(6)
+        if "gripper" in msg.name:
+            gripper_idx = msg.name.index("gripper")
+            if len(msg.position) > gripper_idx:
+                self.gripper_joint_position = float(msg.position[gripper_idx])
+            if len(msg.velocity) > gripper_idx:
+                self.gripper_joint_velocity = float(msg.velocity[gripper_idx])
+        elif len(msg.position) >= 7:
+            self.gripper_joint_position = float(msg.position[6])
+            if len(msg.velocity) >= 7:
+                self.gripper_joint_velocity = float(msg.velocity[6])
         self.first_message_arm_joints_arrived = True
-
 
     def compute_rl_control(self):        
         # Safety check to not do anything until a first base and blind state are received
@@ -246,18 +253,8 @@ class LocoManipulationTeleopControlNode(Node):
             self.heightmap.update_height_map(self.mjData.qpos[0:3], yaw=base_ori_euler_xyz[2])
 
 
-        # IK controller --------------------------------------------------------------
-        ee_quat = np.array([1.0, 0.0, 0.0, 0.0])
-
-        if(self.console.isArmActivated):
-            if(self.ref_ee_lin_pos is not None):
-                target_pos_ik = self.ref_ee_lin_pos
-                self.desired_pose_command, \
-                    self.desired_joint_pos_arm, \
-                    ik_succeded = self.ik_mink_solver.compute(target_pos_ik, ee_quat, self.arm_joints_position, 
-                                                            self.desired_pose_command, optimize_height=False, optimize_pitch=False)
-        else:
-            self.desired_joint_pos_arm = joints_pos_arm 
+        # Arm is feedback-only here; active arm commands are handled by the external arm controller.
+        self.desired_joint_pos_arm = joints_pos_arm
 
         # RL controller --------------------------------------------------------------
         if self.console.isRLActivated:            
@@ -307,28 +304,6 @@ class LocoManipulationTeleopControlNode(Node):
         trajectory_generator_msg.kp = (np.ones(12)*self.Kp_legs).tolist()
         trajectory_generator_msg.kd = (np.ones(12)*self.Kd_legs).tolist()
         self.publisher_trajectory_generator.publish(trajectory_generator_msg)
-
-        arm_trajectory_generator_msg = ArmTrajectoryGenerator()
-        arm_trajectory_generator_msg.timestamp = float(self.get_clock().now().nanoseconds)
-        arm_trajectory_generator_msg.desired_arm_joints_position = self.desired_joint_pos_arm.tolist()
-        arm_trajectory_generator_msg.desired_arm_joints_velocity = (self.desired_joint_pos_arm*0.0).tolist()
-        arm_trajectory_generator_msg.arm_kp = (np.ones(6)*self.Kp_arm).tolist()
-        arm_trajectory_generator_msg.arm_kd = (np.ones(6)*self.Kd_arm).tolist()
-        arm_trajectory_generator_msg.desired_arm_gripper_position = float(self.desired_joint_pos_gripper)
-        self.publisher_arm_trajectory_generator.publish(arm_trajectory_generator_msg)
-
-
-        # Compute the inverse dynamics
-        #M = np.zeros((self.mjModel.nv, self.mjModel.nv))
-        #mujoco.mj_fullM(self.mjModel, M, self.mjData.qM)
-        #M = M[18:24, 18:24]
-        #tau_arm = M @ (self.Kp_arm * (self.desired_joint_pos_arm - joints_pos_arm) - self.Kd_arm * joints_vel_arm)
-        #tau_arm += self.mjData.qfrc_bias[18:24]
-        #arm_control_signal_msg = ArmControlSignal()
-        #arm_control_signal_msg.desired_arm_joints_torque = tau_arm.tolist()
-        #arm_control_signal_msg.desired_arm_gripper_torque = 0.0  # Placeholder for gripper torque
-        #self.publisher_arm_control_signal.publish(arm_control_signal_msg)
-
 
         if self.use_ik_visualizer:
             # Render only at a certain frequency -----------------------------------------------------------------
