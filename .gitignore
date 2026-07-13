@@ -47,3 +47,8 @@ deploy/ros1_ws/install/
 deploy/ros2_ws/build/
 deploy/ros2_ws/install/
 deploy/ros2_ws/log/
+
+# Generated deployment workspace
+deploy/ros2_ws/build
+deploy/ros2_ws/install
+deploy/ros2_ws/log
