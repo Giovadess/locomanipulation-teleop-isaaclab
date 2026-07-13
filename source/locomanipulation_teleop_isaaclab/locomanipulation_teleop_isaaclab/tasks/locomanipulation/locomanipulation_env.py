@@ -55,19 +55,6 @@ class LocomotionManipulationEnv(DirectRLEnv):
         self._arm_target_elapsed_s = torch.zeros(self.num_envs, device=self.device)
         self._arm_target_update_interval_s = torch.zeros(self.num_envs, device=self.device)
 
-        arm_duration_range = self.cfg.arm_trajectory_duration_range_s
-        arm_update_range = self.cfg.arm_target_update_interval_range_s
-        if arm_duration_range[0] <= 0.5 or arm_duration_range[0] > arm_duration_range[1]:
-            raise ValueError(
-                "arm_trajectory_duration_range_s must be ordered and have a minimum strictly greater than 0.5 s."
-            )
-        if arm_update_range[0] <= 0.0 or arm_update_range[0] > arm_update_range[1]:
-            raise ValueError("arm_target_update_interval_range_s must contain positive, ordered values.")
-        if arm_update_range[0] < arm_duration_range[1]:
-            raise ValueError(
-                "The minimum arm target update interval must be greater than or equal to the maximum trajectory "
-                "duration, otherwise the arm cannot reach every sampled target."
-            )
 
         # Swing peak
         self._swing_peak = torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.device).repeat(self.num_envs,1)

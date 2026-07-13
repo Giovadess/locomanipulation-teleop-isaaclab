@@ -5,7 +5,7 @@ sys.path.append(dir_path+"/../")
 sys.path.append(dir_path+"/../scripts/rsl_rl")
 
 
-locomotion_policy_folder_path = dir_path + "/../tested_policies/2026-07-11_08-25-11"
+locomotion_policy_folder_path = dir_path + "/../tested_policies/arm_fixed"
 # ----------------------------------------------------------------------------------------------------------------
 
 Kp_walking = 20.0

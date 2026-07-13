@@ -251,26 +251,28 @@ def _sample_arm_trajectory(self, env_ids: torch.Tensor):
 
 def _update_arm_trajectory(self):
     """Advance every arm along its current linear joint-space trajectory."""
-    self._arm_trajectory_elapsed_s += self.step_dt
-    self._arm_target_elapsed_s += self.step_dt
+    num_episode_from_start = self.common_step_counter / 24. #self.max_episode_length #HACK this should be taken from rsl rl
+    if(num_episode_from_start >= self.cfg.arm_trajectory_event_start):
+        self._arm_trajectory_elapsed_s += self.step_dt
+        self._arm_target_elapsed_s += self.step_dt
 
-    interpolation = torch.clamp(
-        self._arm_trajectory_elapsed_s / self._arm_trajectory_duration_s,
-        min=0.0,
-        max=1.0,
-    ).unsqueeze(1)
-    self._joints_arm_command_pos = torch.lerp(
-        self._arm_trajectory_start_pos,
-        self._arm_trajectory_target_pos,
-        interpolation,
-    )
+        interpolation = torch.clamp(
+            self._arm_trajectory_elapsed_s / self._arm_trajectory_duration_s,
+            min=0.0,
+            max=1.0,
+        ).unsqueeze(1)
+        self._joints_arm_command_pos = torch.lerp(
+            self._arm_trajectory_start_pos,
+            self._arm_trajectory_target_pos,
+            interpolation,
+        )
 
-    resample_env_ids = torch.nonzero(
-        self._arm_target_elapsed_s >= self._arm_target_update_interval_s,
-        as_tuple=False,
-    ).squeeze(-1)
-    if resample_env_ids.numel() > 0:
-        _sample_arm_trajectory(self, resample_env_ids)
+        resample_env_ids = torch.nonzero(
+            self._arm_target_elapsed_s >= self._arm_target_update_interval_s,
+            as_tuple=False,
+        ).squeeze(-1)
+        if resample_env_ids.numel() > 0:
+            _sample_arm_trajectory(self, resample_env_ids)
 
 
 def _sample_random_commands(self, env_ids: torch.Tensor | None = None) -> torch.Tensor:
