@@ -355,20 +355,20 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
 
     # Feet reward scale
-    feet_air_time_reward_scale = 0.25
-    feet_air_time_variance_reward_scale = -1.0
+    feet_air_time_reward_scale = 0.0
+    feet_air_time_variance_reward_scale = 0.0
 
-    feet_height_clearance_aperiodic_reward_scale = 0.25 * 0.0  
-    feet_height_clearance_periodic_reward_scale = 0.25 * 0.0
+    feet_height_clearance_aperiodic_reward_scale = 0.0  
+    feet_height_clearance_periodic_reward_scale = 0.25
     
-    feet_height_clearance_mujoco_aperiodic_reward_scale = 0.25
-    feet_height_clearance_mujoco_periodic_reward_scale = 0.25 * 0.0
+    feet_height_clearance_mujoco_aperiodic_reward_scale = 0.0
+    feet_height_clearance_mujoco_periodic_reward_scale = 0.0
     
-    feet_slide_reward_scale = -0.25
+    feet_slide_reward_scale = 0.0
     
     feet_to_hip_distance_reward_scale = 2.5
     # This is used in loocmotion_env.py for the above reward
-    desired_hip_offset = 0.095
+    desired_hip_offset = 0.12
 
     feet_edge_reward_scale = 0.0
     feet_edge_height_threshold = 0.05
@@ -380,7 +380,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
 
     # Contact suggestion reward scale
-    periodic_contact_suggestion_reward_scale =  0.0
+    periodic_contact_suggestion_reward_scale =  0.5
     # Desired step freq and duty factor (if periodic gait contact suggestion is used)
     desired_step_freq = 1.4
     desired_duty_factor = 0.65
