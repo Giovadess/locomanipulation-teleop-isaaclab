@@ -55,15 +55,6 @@ class EventCfg:
         },
     )
 
-    base_com = EventTerm(
-        func=mdp.randomize_rigid_body_com,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "com_range": {"x": (-0.02, 0.02), "y": (-0.02, 0.02), "z": (-0.02, 0.02)},
-        },
-    )
-
     scale_all_link_masses = EventTerm(
         func=mdp.randomize_rigid_body_mass,
         mode="startup",
@@ -100,9 +91,9 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-            "stiffness_distribution_params": (-2.0, 2.0),
-            "damping_distribution_params": (-0.5, 0.5),
-            "operation": "add",
+            "stiffness_distribution_params": (0.8, 1.2),
+            "damping_distribution_params": (0.8, 1.2),
+            "operation": "scale",
             "distribution": "uniform",
         },
     )
