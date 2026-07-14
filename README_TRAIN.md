@@ -23,14 +23,14 @@ python -m pip install -e source/locomanipulation_teleop_isaaclab
 - To train:
 
 ```bash
-python scripts/rsl_rl/train.py --task=Locomomanipulation-Go2-Flat --num_envs=4096 --headless
-python scripts/rsl_rl/train.py --task=Locomomanipulation-Go2-Rough-Blind --num_envs=4096 --headless
+python scripts/rsl_rl/train.py --task=LocoManipulation-Go2-Flat --num_envs=4096 --headless
+python scripts/rsl_rl/train.py --task=LocoManipulation-Go2-Rough-Blind --num_envs=4096 --headless
 ```
 
 - To test the policy, you can press:
 ```bash
-python scripts/rsl_rl/play.py --task=Locomomanipulation-Go2-Flat --num_envs=16
-python scripts/rsl_rl/play.py --task=Locomomanipulation-Go2-Rough-Blind --num_envs=16
+python scripts/rsl_rl/play.py --task=LocoManipulation-Go2-Flat --num_envs=16
+python scripts/rsl_rl/play.py --task=LocoManipulation-Go2-Rough-Blind --num_envs=16
 ```
 
 
