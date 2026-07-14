@@ -164,11 +164,11 @@ class LocoManipulationTeleopControlNode(Node):
         # Subscribers and Publishers
         self.subscription_base_state = self.create_subscription(BaseState,"/base_state", self.get_base_state_callback, 1)
         self.subscription_blind_state = self.create_subscription(BlindState,"/blind_state", self.get_blind_state_callback, 1)
-        self.subscription_arm_joint_states = self.create_subscription(JointState, "/leader/feedback/joint_states", self.get_arm_joint_states_callback, 1)
+        self.subscription_arm_joint_states = self.create_subscription(JointState, "/follower/feedback/joint_states", self.get_arm_joint_states_callback, 1)
         self.subscription_joy = self.create_subscription(Joy,"/joy", self.joystick.get_joy_callback, 1)
         
         self.publisher_trajectory_generator = self.create_publisher(TrajectoryGenerator,"/trajectory_generator", 1)
-        self.publisher_gripper_command = self.create_publisher(JointState, "/leader/control/joint_states", 1)
+        self.publisher_gripper_command = self.create_publisher(JointState, "/follower/control/joint_states", 1)
         
         RL_FREQ = 1./(config.training_env["sim"]["dt"]*config.training_env["decimation"])  # Hz, frequency of the RL controller
         self.timer = self.create_timer(1.0/RL_FREQ, self.compute_rl_control)
