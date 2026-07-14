@@ -55,15 +55,6 @@ class EventCfg:
         },
     )
 
-    base_com = EventTerm(
-        func=mdp.randomize_rigid_body_com,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "com_range": {"x": (-0.02, 0.02), "y": (-0.02, 0.02), "z": (-0.02, 0.02)},
-        },
-    )
-
     scale_all_link_masses = EventTerm(
         func=mdp.randomize_rigid_body_mass,
         mode="startup",
@@ -100,9 +91,9 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-            "stiffness_distribution_params": (-2.0, 2.0),
-            "damping_distribution_params": (-0.5, 0.5),
-            "operation": "add",
+            "stiffness_distribution_params": (0.8, 1.2),
+            "damping_distribution_params": (0.8, 1.2),
+            "operation": "scale",
             "distribution": "uniform",
         },
     )
@@ -129,7 +120,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     # Arm joint-space target trajectory. A target is kept long enough for the
     # linear trajectory to finish, then a new one is sampled independently for
     # each environment.
-    arm_trajectory_event_start = 4000
+    arm_trajectory_event_start = 0
     arm_target_update_interval_range_s = (2.0, 4.0)
     arm_trajectory_duration_range_s = (2.5, 5.0)
 
@@ -144,7 +135,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
     observation_space += 12 # last actions
     observation_space += 6 # arm joint
 
-    use_clock_signal = False
+    use_clock_signal = True
     if(use_clock_signal):
         observation_space += 4 # clock signal for periodic gait
 
@@ -322,7 +313,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
     # Desired tracking variables
     desired_base_height = 0.30
-    desired_feet_height = 0.05
+    desired_feet_height = 0.06
 
 
     # Desired clip actions
@@ -355,20 +346,20 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
 
     # Feet reward scale
-    feet_air_time_reward_scale = 0.25
-    feet_air_time_variance_reward_scale = -1.0
+    feet_air_time_reward_scale = 0.0
+    feet_air_time_variance_reward_scale = 0.0
 
-    feet_height_clearance_aperiodic_reward_scale = 0.25 * 0.0  
-    feet_height_clearance_periodic_reward_scale = 0.25 * 0.0
+    feet_height_clearance_aperiodic_reward_scale = 0.0  
+    feet_height_clearance_periodic_reward_scale = 0.25
     
-    feet_height_clearance_mujoco_aperiodic_reward_scale = 0.25
-    feet_height_clearance_mujoco_periodic_reward_scale = 0.25 * 0.0
+    feet_height_clearance_mujoco_aperiodic_reward_scale = 0.0
+    feet_height_clearance_mujoco_periodic_reward_scale = 0.0
     
-    feet_slide_reward_scale = -0.25
+    feet_slide_reward_scale = 0.0
     
     feet_to_hip_distance_reward_scale = 2.5
     # This is used in loocmotion_env.py for the above reward
-    desired_hip_offset = 0.095
+    desired_hip_offset = 0.12
 
     feet_edge_reward_scale = 0.0
     feet_edge_height_threshold = 0.05
@@ -380,7 +371,7 @@ class Go2FlatEnvCfg(DirectRLEnvCfg):
 
 
     # Contact suggestion reward scale
-    periodic_contact_suggestion_reward_scale =  0.0
+    periodic_contact_suggestion_reward_scale =  0.5
     # Desired step freq and duty factor (if periodic gait contact suggestion is used)
     desired_step_freq = 1.4
     desired_duty_factor = 0.65
