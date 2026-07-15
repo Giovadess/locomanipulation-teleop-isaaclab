@@ -101,7 +101,7 @@ class LocoManipulationTeleopControlNode(Node):
         keyframe_id = mujoco.mj_name2id(self.mjModel, mujoco.mjtObj.mjOBJ_KEY, "home")
         self.mjData.qpos = self.mjModel.key_qpos[keyframe_id]
         
-        self.use_ik_visualizer = True
+        self.use_ik_visualizer = os.environ.get("LOCOMANIP_MUJOCO_VIEWER", "1") == "1"
         if self.use_ik_visualizer:
             self.visualizer_model = mujoco.MjModel.from_xml_path(dir_path+"/mujoco/models/scene_floating.xml")
             self.visualizer_data = mujoco.MjData(self.visualizer_model)
