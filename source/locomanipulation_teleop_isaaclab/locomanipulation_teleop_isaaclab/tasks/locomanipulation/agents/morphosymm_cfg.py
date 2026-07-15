@@ -42,7 +42,7 @@ obs_space_names_actor = [
         "invariant_scalar",
         "joints_pos",
         "joints_vel",
-        "actions",
+        "joints_pos",
         "clock_data",
         "reflection_sign_flipping_scalar",
         "reflection_sign_flipping_scalar",
@@ -79,7 +79,7 @@ obs_space_names_critic += ["joints_pos", "joints_pos", "base_lin_vel", "invarian
 
 
 # Action Space
-action_space_names = ["actions"]
+action_space_names = ["joints_pos"]
 
 
 # Joints Order
